@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  db:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: saas_hospitalar
+      # Sem estas variaveis o Mongo sobe sem autenticacao nenhuma. Defina
+      # MONGO_ROOT_USER/MONGO_ROOT_PASSWORD no seu shell ou num .env na raiz
+      # antes de rodar o compose (nao use os valores default em producao).
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?defina MONGO_ROOT_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD}
+    ports:
+      # Bind só em localhost - o Mongo nao precisa ficar acessivel na rede externa,
+      # o backend fala com ele pela rede interna do compose (host "db").
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - db_data:/data/db
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      # sobrescreve o MONGO_URI do .env (que aponta pra localhost, usado no modo manual):
+      # dentro da rede do compose o Mongo e alcancado pelo nome do servico "db".
+      MONGO_URI: mongodb://${MONGO_ROOT_USER:?defina MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD}@db:27017/saas_hospitalar?authSource=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+volumes:
+  db_data:

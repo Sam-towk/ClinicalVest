@@ -1,0 +1,243 @@
+@import 'tailwindcss';
+
+/*
+  Design tokens — a paleta parte da identidade original da marca
+  (--color-primary / --color-primary-dark, verde-azulado clinico) e
+  e expandida para um sistema completo com suporte a dark mode.
+*/
+:root {
+  /* Brand (preservado da base original) */
+  --brand-primary: #0f6e5b;
+  --brand-primary-dark: #0a4f41;
+  --brand-primary-light: #16a085;
+  --brand-primary-soft: #e4f3ee;
+
+  /* Superficies */
+  --brand-bg: #f6f8f7;
+  --brand-surface: #ffffff;
+  --brand-surface-alt: #f0f4f2;
+  --brand-border: #e1e8e5;
+  --brand-border-strong: #cbd6d1;
+
+  /* Texto */
+  --brand-text: #14201c;
+  --brand-text-muted: #5b6b65;
+  --brand-text-faint: #8a9994;
+
+  /* Semantica */
+  --brand-success: #0f6e5b;
+  --brand-success-soft: #e4f3ee;
+  --brand-warning: #b4740e;
+  --brand-warning-soft: #fbf0dd;
+  --brand-danger: #c23b3b;
+  --brand-danger-soft: #fbe9e9;
+  --brand-info: #2563a8;
+  --brand-info-soft: #e7f0fa;
+
+  --brand-ring: #0f6e5b;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 2px 0 rgb(15 25 21 / 0.05);
+  --shadow: 0 2px 8px -2px rgb(15 25 21 / 0.08), 0 1px 2px -1px rgb(15 25 21 / 0.06);
+  --shadow-lg: 0 12px 32px -8px rgb(15 25 21 / 0.16);
+
+  --sidebar-width: 264px;
+  --topbar-height: 68px;
+
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --brand-primary: #22b892;
+  --brand-primary-dark: #0f6e5b;
+  --brand-primary-light: #3fd3ac;
+  --brand-primary-soft: #103029;
+
+  --brand-bg: #0d1512;
+  --brand-surface: #131e1a;
+  --brand-surface-alt: #182620;
+  --brand-border: #23342d;
+  --brand-border-strong: #324840;
+
+  --brand-text: #eef5f2;
+  --brand-text-muted: #a6b8b1;
+  --brand-text-faint: #74857f;
+
+  --brand-success: #22b892;
+  --brand-success-soft: #103029;
+  --brand-warning: #e2a53d;
+  --brand-warning-soft: #33280f;
+  --brand-danger: #e8686a;
+  --brand-danger-soft: #3a1b1c;
+  --brand-info: #5b9bdb;
+  --brand-info-soft: #142433;
+
+  --brand-ring: #22b892;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --brand-primary: #22b892;
+    --brand-primary-dark: #0f6e5b;
+    --brand-primary-light: #3fd3ac;
+    --brand-primary-soft: #103029;
+
+    --brand-bg: #0d1512;
+    --brand-surface: #131e1a;
+    --brand-surface-alt: #182620;
+    --brand-border: #23342d;
+    --brand-border-strong: #324840;
+
+    --brand-text: #eef5f2;
+    --brand-text-muted: #a6b8b1;
+    --brand-text-faint: #74857f;
+
+    --brand-success: #22b892;
+    --brand-success-soft: #103029;
+    --brand-warning: #e2a53d;
+    --brand-warning-soft: #33280f;
+    --brand-danger: #e8686a;
+    --brand-danger-soft: #3a1b1c;
+    --brand-info: #5b9bdb;
+    --brand-info-soft: #142433;
+
+    --brand-ring: #22b892;
+    color-scheme: dark;
+  }
+}
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: var(--brand-primary);
+  --color-primary-dark: var(--brand-primary-dark);
+  --color-primary-light: var(--brand-primary-light);
+  --color-primary-soft: var(--brand-primary-soft);
+
+  --color-bg: var(--brand-bg);
+  --color-surface: var(--brand-surface);
+  --color-surface-alt: var(--brand-surface-alt);
+  --color-border: var(--brand-border);
+  --color-border-strong: var(--brand-border-strong);
+
+  --color-text: var(--brand-text);
+  --color-text-muted: var(--brand-text-muted);
+  --color-text-faint: var(--brand-text-faint);
+
+  --color-success: var(--brand-success);
+  --color-success-soft: var(--brand-success-soft);
+  --color-warning: var(--brand-warning);
+  --color-warning-soft: var(--brand-warning-soft);
+  --color-danger: var(--brand-danger);
+  --color-danger-soft: var(--brand-danger-soft);
+  --color-info: var(--brand-info);
+  --color-info-soft: var(--brand-info-soft);
+
+  --color-ring: var(--brand-ring);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@keyframes dialog-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dialog-content-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.dialog-overlay {
+  animation: dialog-overlay-in 180ms ease-out;
+}
+
+.dialog-content {
+  animation: dialog-content-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay,
+  .dialog-content {
+    animation: none;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+  }
+}
