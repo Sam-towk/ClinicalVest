@@ -15,6 +15,9 @@ O sistema é um monorepo pequeno:
 - **`backend/`** — API REST em Node.js (Express) + MongoDB (Mongoose)
 - **`frontend/`** — SPA em React + TypeScript, construída com Vite e Tailwind CSS
 
+> [!NOTE]
+> **Sobre este projeto.** O Clinical Vest é um projeto de estudo, criado para consolidar na prática conceitos de Node.js, TypeScript, arquitetura de APIs REST e persistência com MongoDB vistos na faculdade — e para aplicar, no desenho das telas e fluxos (fila digital, agendamentos, encaminhamentos), conceitos de Interação Humano-Computador (IHC) trabalhados na disciplina. Não é um produto em produção nem se destina a uso clínico real.
+
 ## Funcionalidades
 
 - **Pacientes** — cadastro central de pacientes humanos e animais (espécie, documento/tutor, contato)
