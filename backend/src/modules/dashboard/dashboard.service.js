@@ -1,5 +1,4 @@
-const Doctor = require('../../models/Doctor');
-const QueueTicket = require('../../models/QueueTicket');
+const { prisma } = require('../../config/prisma');
 
 function startOfToday() {
   const date = new Date();
@@ -9,9 +8,11 @@ function startOfToday() {
 
 async function getAdminSummary(tenantId) {
   const [medicosDePlantao, pacientesAguardando, pacientesAtendidosHoje] = await Promise.all([
-    Doctor.countDocuments({ tenantId, plantao: 'Sim' }),
-    QueueTicket.countDocuments({ tenantId, status: 'Aguardando' }),
-    QueueTicket.countDocuments({ tenantId, status: 'Atendido', updatedAt: { $gte: startOfToday() } }),
+    prisma.doctor.count({ where: { tenantId, plantao: 'Sim' } }),
+    prisma.queueTicket.count({ where: { tenantId, status: 'Aguardando' } }),
+    prisma.queueTicket.count({
+      where: { tenantId, status: 'Atendido', updatedAt: { gte: startOfToday() } },
+    }),
   ]);
 
   return { medicosDePlantao, pacientesAguardando, pacientesAtendidosHoje };

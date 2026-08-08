@@ -1,5 +1,8 @@
-const mongoose = require('mongoose');
-const MedicalRecord = require('../../models/MedicalRecord');
+const { prisma } = require('../../config/prisma');
+const isValidUuid = require('../../utils/isValidUuid');
+const pickFields = require('../../utils/pickFields');
+
+const WRITABLE = ['paciente', 'alergias', 'exames_solicitados', 'itens_prescritos', 'classificacao_doenca'];
 
 function scopedFilter(tenantId, requester) {
   const filter = { tenantId };
@@ -8,40 +11,37 @@ function scopedFilter(tenantId, requester) {
 }
 
 async function findAll(tenantId, requester) {
-  return MedicalRecord.find(scopedFilter(tenantId, requester)).sort({ createdAt: -1 });
+  return prisma.medicalRecord.findMany({ where: scopedFilter(tenantId, requester), orderBy: { createdAt: 'desc' } });
 }
 
 async function findById(tenantId, id, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
-  return MedicalRecord.findOne({ _id: id, ...scopedFilter(tenantId, requester) });
+  if (!isValidUuid(id)) return null;
+  return prisma.medicalRecord.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
 }
 
 async function create(tenantId, data, requester) {
-  const { doctorId: _ignored, ...safeData } = data || {};
-  return MedicalRecord.create({ ...safeData, tenantId, doctorId: requester.doctorId });
+  const safeData = pickFields(data, WRITABLE);
+  return prisma.medicalRecord.create({ data: { ...safeData, tenantId, doctorId: requester.doctorId } });
 }
 
 async function update(tenantId, id, data, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
-  const { tenantId: _t, doctorId: _d, ...safeData } = data || {};
-  return MedicalRecord.findOneAndUpdate(
-    { _id: id, ...scopedFilter(tenantId, requester) },
-    { $set: safeData },
-    { new: true, runValidators: true }
-  );
+  if (!isValidUuid(id)) return null;
+  const safeData = pickFields(data, WRITABLE);
+  const existing = await prisma.medicalRecord.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
+  if (!existing) return null;
+  return prisma.medicalRecord.update({ where: { id }, data: safeData });
 }
 
 async function remove(tenantId, id) {
-  if (!mongoose.isValidObjectId(id)) return;
-  await MedicalRecord.deleteOne({ _id: id, tenantId });
+  if (!isValidUuid(id)) return;
+  await prisma.medicalRecord.deleteMany({ where: { id, tenantId } });
 }
 
 const RESTRICTED_FIELDS = ['alergias', 'classificacao_doenca'];
 
 function serializeForRole(record, role) {
-  const json = record.toJSON ? record.toJSON() : record;
-  if (role !== 'assistente') return json;
-  const restricted = { ...json };
+  if (role !== 'assistente') return record;
+  const restricted = { ...record };
   for (const field of RESTRICTED_FIELDS) delete restricted[field];
   return restricted;
 }

@@ -1,0 +1,156 @@
+// Prisma schema - Supabase (Postgres) como banco principal.
+// Isolamento multi-tenant continua sendo por tenantId filtrado em cada service,
+// igual ao modelo anterior no MongoDB - nao ha tabela Tenant.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  admin
+  medico
+  assistente
+}
+
+model Doctor {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String
+  nome          String
+  email         String?
+  telefone      String?
+  especialidade String?
+  plantao       String   @default("Não") // 'Sim' | 'Não' - validado no service, igual ao enum Mongoose anterior
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users               User[]
+  appointments        Appointment[]
+  medicalRecords      MedicalRecord[]
+  medicationReferrals MedicationReferral[]
+  procedureReferrals  ProcedureReferral[]
+
+  @@index([tenantId])
+  @@map("doctors")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String
+  nome         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(admin)
+  doctorId     String?  @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  doctor Doctor? @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Patient {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String
+  nome      String
+  especie   String? // sempre "Humano" — clinica so atende pessoas
+  documento String? // CPF
+  contato   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("patients")
+}
+
+model Appointment {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String
+  paciente  String
+  doctorId  String   @db.Uuid
+  data_hora String?
+  status    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([doctorId])
+  @@map("appointments")
+}
+
+model MedicalRecord {
+  id                   String   @id @default(uuid()) @db.Uuid
+  tenantId             String
+  paciente             String
+  doctorId             String   @db.Uuid
+  alergias             String?
+  exames_solicitados   String?
+  itens_prescritos     String?
+  classificacao_doenca String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([doctorId])
+  @@map("medical_records")
+}
+
+model MedicationReferral {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String
+  paciente         String
+  doctorId         String   @db.Uuid
+  medicamento      String?
+  nivel_prioridade String?
+  setor_destino    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([doctorId])
+  @@map("medication_referrals")
+}
+
+model ProcedureReferral {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String
+  paciente         String
+  doctorId         String   @db.Uuid
+  procedimento     String?
+  nivel_prioridade String?
+  setor_destino    String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([doctorId])
+  @@map("procedure_referrals")
+}
+
+model QueueTicket {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String
+  paciente   String
+  setor      String?
+  prioridade String?
+  status     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("queue_tickets")
+}

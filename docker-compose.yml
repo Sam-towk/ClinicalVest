@@ -1,35 +1,51 @@
-version: "3.8"
-
 services:
   db:
-    image: mongo:7
+    image: postgres:16-alpine
+    container_name: clinicalvest-db
     restart: unless-stopped
     environment:
-      MONGO_INITDB_DATABASE: saas_hospitalar
-      # Sem estas variaveis o Mongo sobe sem autenticacao nenhuma. Defina
-      # MONGO_ROOT_USER/MONGO_ROOT_PASSWORD no seu shell ou num .env na raiz
-      # antes de rodar o compose (nao use os valores default em producao).
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?defina MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clinicalvest
     ports:
-      # Bind só em localhost - o Mongo nao precisa ficar acessivel na rede externa,
-      # o backend fala com ele pela rede interna do compose (host "db").
-      - "127.0.0.1:27017:27017"
+      - "5432:5432"
     volumes:
-      - db_data:/data/db
+      - clinicalvest_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d clinicalvest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   backend:
     build: ./backend
+    container_name: clinicalvest-backend
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     env_file: ./backend/.env
+    # Banco local do Compose (sobrescreve Supabase do .env para o app funcionar offline).
+    # Para usar Supabase de novo, remova estas duas linhas e configure o pooler no .env.
     environment:
-      # sobrescreve o MONGO_URI do .env (que aponta pra localhost, usado no modo manual):
-      # dentro da rede do compose o Mongo e alcancado pelo nome do servico "db".
-      MONGO_URI: mongodb://${MONGO_ROOT_USER:?defina MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD:?defina MONGO_ROOT_PASSWORD}@db:27017/saas_hospitalar?authSource=admin
+      PORT: "3000"
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/clinicalvest
+      DIRECT_URL: postgresql://postgres:postgres@db:5432/clinicalvest
     ports:
       - "3000:3000"
-    depends_on:
-      - db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  db_data:
+  clinicalvest_pg:

@@ -103,7 +103,7 @@ export default function Login() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              minLength={8}
+              minLength={mode === 'register' ? 8 : undefined}
               required
               className={CONTROL_CLASSES}
             />

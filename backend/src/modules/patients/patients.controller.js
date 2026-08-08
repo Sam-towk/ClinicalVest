@@ -10,7 +10,7 @@ async function list(req, res, next) {
 async function getOne(req, res, next) {
   try {
     const item = await service.findById(req.tenantId, req.params.id);
-    if (!item) return res.status(404).json({ error: 'Pacientes/Pets nao encontrado(a).' });
+    if (!item) return res.status(404).json({ error: 'Paciente nao encontrado(a).' });
     res.json(item);
   } catch (err) { next(err); }
 }
@@ -25,7 +25,7 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const item = await service.update(req.tenantId, req.params.id, req.body);
-    if (!item) return res.status(404).json({ error: 'Pacientes/Pets nao encontrado(a).' });
+    if (!item) return res.status(404).json({ error: 'Paciente nao encontrado(a).' });
     res.json(item);
   } catch (err) { next(err); }
 }

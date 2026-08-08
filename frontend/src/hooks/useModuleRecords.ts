@@ -18,7 +18,13 @@ export function useModuleMutations(resource: string) {
 
   const create = useMutation({
     mutationFn: (data: Record<string, unknown>) => api.create(resource, data),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // Cadastro de paciente pode criar ticket de fila no backend.
+      if (resource === 'patients') {
+        queryClient.invalidateQueries({ queryKey: recordsQueryKey('queue') });
+      }
+    },
   });
 
   const update = useMutation({

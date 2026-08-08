@@ -1,6 +1,10 @@
-const mongoose = require('mongoose');
-const ProcedureReferral = require('../../models/ProcedureReferral');
-const Doctor = require('../../models/Doctor');
+const { prisma } = require('../../config/prisma');
+const isValidUuid = require('../../utils/isValidUuid');
+const pickFields = require('../../utils/pickFields');
+
+const WRITABLE = ['paciente', 'procedimento', 'nivel_prioridade', 'setor_destino'];
+const CLINICAL_FIELDS = ['procedimento', 'nivel_prioridade'];
+const LOGISTICS_FIELDS = ['setor_destino'];
 
 function scopedFilter(tenantId, requester) {
   const filter = { tenantId };
@@ -9,12 +13,12 @@ function scopedFilter(tenantId, requester) {
 }
 
 async function findAll(tenantId, requester) {
-  return ProcedureReferral.find(scopedFilter(tenantId, requester)).sort({ createdAt: -1 });
+  return prisma.procedureReferral.findMany({ where: scopedFilter(tenantId, requester), orderBy: { createdAt: 'desc' } });
 }
 
 async function findById(tenantId, id, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
-  return ProcedureReferral.findOne({ _id: id, ...scopedFilter(tenantId, requester) });
+  if (!isValidUuid(id)) return null;
+  return prisma.procedureReferral.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
 }
 
 async function create(tenantId, data, requester) {
@@ -22,39 +26,31 @@ async function create(tenantId, data, requester) {
 
   if (requester.role === 'assistente') {
     doctorId = data?.doctorId;
-    if (!mongoose.isValidObjectId(doctorId) || !(await Doctor.exists({ _id: doctorId, tenantId }))) {
+    if (!isValidUuid(doctorId) || !(await prisma.doctor.findFirst({ where: { id: doctorId, tenantId }, select: { id: true } }))) {
       const err = new Error('doctorId invalido ou de outra clinica.');
       err.status = 400;
       throw err;
     }
   }
 
-  const { doctorId: _ignored, tenantId: _t, ...safeData } = data || {};
-  return ProcedureReferral.create({ ...safeData, tenantId, doctorId });
+  const safeData = pickFields(data, WRITABLE);
+  return prisma.procedureReferral.create({ data: { ...safeData, tenantId, doctorId } });
 }
 
-const CLINICAL_FIELDS = ['procedimento', 'nivel_prioridade'];
-const LOGISTICS_FIELDS = ['setor_destino'];
-
 async function update(tenantId, id, data, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
+  if (!isValidUuid(id)) return null;
 
   const allowedKeys = requester.role === 'medico' ? [...CLINICAL_FIELDS, ...LOGISTICS_FIELDS] : LOGISTICS_FIELDS;
-  const safeData = {};
-  for (const key of allowedKeys) {
-    if (data && key in data) safeData[key] = data[key];
-  }
+  const safeData = pickFields(data, allowedKeys);
 
-  return ProcedureReferral.findOneAndUpdate(
-    { _id: id, ...scopedFilter(tenantId, requester) },
-    { $set: safeData },
-    { new: true, runValidators: true }
-  );
+  const existing = await prisma.procedureReferral.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
+  if (!existing) return null;
+  return prisma.procedureReferral.update({ where: { id }, data: safeData });
 }
 
 async function remove(tenantId, id) {
-  if (!mongoose.isValidObjectId(id)) return;
-  await ProcedureReferral.deleteOne({ _id: id, tenantId });
+  if (!isValidUuid(id)) return;
+  await prisma.procedureReferral.deleteMany({ where: { id, tenantId } });
 }
 
 module.exports = { findAll, findById, create, update, remove };
