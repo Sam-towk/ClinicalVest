@@ -1,12 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, HeartPulse, X } from 'lucide-react';
 import { modules } from '@/config/modules';
+import { getUser } from '@/lib/auth';
 import { IconButton } from '../ui/IconButton';
 
 const NAV_GROUPS: { label: string; slugs: string[] }[] = [
   { label: 'Atendimento', slugs: ['patients', 'medical-records', 'scheduling', 'queue'] },
   { label: 'Encaminhamentos', slugs: ['medication-referral', 'procedure-referral'] },
-  { label: 'Administracao', slugs: ['doctors'] },
+  { label: 'Administracao', slugs: ['doctors', 'users'] },
 ];
 
 const linkClasses = ({ isActive }: { isActive: boolean }) =>
@@ -20,6 +21,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
+  const role = getUser()?.role;
+  const visibleModules = (slugs: string[]) =>
+    slugs
+      .map((slug) => modules.find((m) => m.slug === slug))
+      .filter((mod): mod is (typeof modules)[number] => !!mod && !!role && mod.permissions.view.includes(role));
+
   return (
     <>
       {mobileOpen && (
@@ -55,22 +62,24 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </NavLink>
           </div>
 
-          {NAV_GROUPS.map((group) => (
-            <div key={group.label} className="flex flex-col gap-1">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">{group.label}</p>
-              {group.slugs.map((slug) => {
-                const mod = modules.find((m) => m.slug === slug);
-                if (!mod) return null;
-                const Icon = mod.icon;
-                return (
-                  <NavLink key={slug} to={`/${slug}`} className={linkClasses} onClick={onClose}>
-                    <Icon className="size-5 shrink-0" aria-hidden="true" />
-                    {mod.title}
-                  </NavLink>
-                );
-              })}
-            </div>
-          ))}
+          {NAV_GROUPS.map((group) => {
+            const groupModules = visibleModules(group.slugs);
+            if (groupModules.length === 0) return null;
+            return (
+              <div key={group.label} className="flex flex-col gap-1">
+                <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">{group.label}</p>
+                {groupModules.map((mod) => {
+                  const Icon = mod.icon;
+                  return (
+                    <NavLink key={mod.slug} to={`/${mod.slug}`} className={linkClasses} onClick={onClose}>
+                      <Icon className="size-5 shrink-0" aria-hidden="true" />
+                      {mod.title}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="rounded-[var(--radius)] bg-white/10 px-3 py-3 text-xs leading-relaxed text-white/70">

@@ -14,6 +14,8 @@ const queueRoutes = require('./modules/queue/queue.routes');
 const medicationReferralRoutes = require('./modules/medication-referral/medication-referral.routes');
 const procedureReferralRoutes = require('./modules/procedure-referral/procedure-referral.routes');
 const doctorsRoutes = require('./modules/doctors/doctors.routes');
+const usersRoutes = require('./modules/users/users.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 
 const app = express();
 
@@ -60,6 +62,8 @@ app.use('/api/queue', queueRoutes);
 app.use('/api/medication-referrals', medicationReferralRoutes);
 app.use('/api/procedure-referrals', procedureReferralRoutes);
 app.use('/api/doctors', doctorsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Rota nao encontrada' }));
 app.use(errorHandler);

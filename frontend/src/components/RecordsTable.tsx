@@ -3,6 +3,7 @@ import { ptBR } from 'date-fns/locale';
 import { Pencil, Trash2, Inbox, SearchX } from 'lucide-react';
 import type { ModuleConfig } from '@/types/module';
 import type { ModuleRecord } from '@/lib/api';
+import { getUser, type Role } from '@/lib/auth';
 import { Badge } from './ui/Badge';
 import { IconButton } from './ui/IconButton';
 import { Skeleton } from './ui/Skeleton';
@@ -13,14 +14,19 @@ interface RecordsTableProps {
   records: ModuleRecord[];
   isLoading: boolean;
   hasFilters: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   onEdit: (record: ModuleRecord) => void;
   onDelete: (record: ModuleRecord) => void;
 }
 
-const columnFields = (module: ModuleConfig) => module.fields.filter((f) => !f.hideInTable);
+const columnFields = (module: ModuleConfig, role: Role | undefined) =>
+  module.fields.filter((f) => !f.hideInTable && !(role && f.hideForRoles?.includes(role)));
 
-export function RecordsTable({ module, records, isLoading, hasFilters, onEdit, onDelete }: RecordsTableProps) {
-  const fields = columnFields(module);
+export function RecordsTable({ module, records, isLoading, hasFilters, canEdit, canDelete, onEdit, onDelete }: RecordsTableProps) {
+  const role = getUser()?.role;
+  const fields = columnFields(module, role);
+  const showActions = canEdit || canDelete;
 
   if (isLoading) {
     return (
@@ -61,9 +67,11 @@ export function RecordsTable({ module, records, isLoading, hasFilters, onEdit, o
             <th scope="col" className="whitespace-nowrap px-4 py-3 font-medium">
               Criado em
             </th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">
-              <span className="sr-only">Acoes</span>
-            </th>
+            {showActions && (
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                <span className="sr-only">Acoes</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -81,16 +89,22 @@ export function RecordsTable({ module, records, isLoading, hasFilters, onEdit, o
               <td className="whitespace-nowrap px-4 py-3 align-middle text-text-muted">
                 {record.createdAt ? format(new Date(record.createdAt), "d 'de' MMM, yyyy", { locale: ptBR }) : '—'}
               </td>
-              <td className="px-4 py-3 align-middle">
-                <div className="flex justify-end gap-1">
-                  <IconButton label={`Editar ${module.singular}`} onClick={() => onEdit(record)}>
-                    <Pencil className="size-4" />
-                  </IconButton>
-                  <IconButton label={`Excluir ${module.singular}`} variant="danger" onClick={() => onDelete(record)}>
-                    <Trash2 className="size-4" />
-                  </IconButton>
-                </div>
-              </td>
+              {showActions && (
+                <td className="px-4 py-3 align-middle">
+                  <div className="flex justify-end gap-1">
+                    {canEdit && (
+                      <IconButton label={`Editar ${module.singular}`} onClick={() => onEdit(record)}>
+                        <Pencil className="size-4" />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton label={`Excluir ${module.singular}`} variant="danger" onClick={() => onDelete(record)}>
+                        <Trash2 className="size-4" />
+                      </IconButton>
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { ModuleConfig } from '@/types/module';
+import type { ModuleConfig, ModuleField } from '@/types/module';
 import { buildModuleSchema, type ModuleFormValues } from '@/lib/validation';
+import { getUser } from '@/lib/auth';
+import { useModuleRecords } from '@/hooks/useModuleRecords';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { FormField } from './ui/FormField';
@@ -18,7 +20,28 @@ interface RecordFormModalProps {
 
 export function RecordFormModal({ open, onOpenChange, module, defaultValues, onSubmit, loading }: RecordFormModalProps) {
   const isEditing = !!defaultValues;
-  const schema = buildModuleSchema(module.fields);
+  const role = getUser()?.role;
+
+  // 'doctors' e o unico resource usado como optionsSource hoje - chamado
+  // incondicionalmente (nunca dentro de laco/condicional) pra nao violar as
+  // regras de hooks quando o usuario navega entre modulos diferentes.
+  const { data: doctorOptions } = useModuleRecords('doctors');
+
+  const visibleFields = useMemo(() => {
+    return module.fields
+      .filter((field) => !field.hideInForm)
+      .filter((field) => !(role && field.hideForRoles?.includes(role)))
+      .map((field): ModuleField => {
+        if (!field.optionsSource) return field;
+        const options = (doctorOptions ?? []).map((record) => ({
+          value: record.id,
+          label: record[field.optionsSource!.labelKey] ?? record.id,
+        }));
+        return { ...field, options };
+      });
+  }, [module.fields, role, doctorOptions]);
+
+  const schema = buildModuleSchema(visibleFields);
 
   const {
     register,
@@ -50,7 +73,7 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
           await onSubmit(values);
         })}
       >
-        {module.fields.map((field) => (
+        {visibleFields.map((field) => (
           <FormField key={field.key} field={field} register={register(field.key)} error={errors[field.key]?.message as string | undefined} />
         ))}
 

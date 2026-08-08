@@ -5,6 +5,7 @@ const medicationReferralSchema = new mongoose.Schema(
   {
     tenantId: { type: String, required: true, index: true },
     paciente: { type: String, required: true },
+    doctorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor', required: true, index: true },
     medicamento: String,
     nivel_prioridade: String,
     setor_destino: String,

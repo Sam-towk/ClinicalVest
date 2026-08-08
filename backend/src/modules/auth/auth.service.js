@@ -4,8 +4,15 @@ const { signToken } = require('../../utils/jwt');
 
 const SALT_ROUNDS = 12;
 
+// Esta rota é pública (não tem authMiddleware na frente), então não pode
+// aceitar role/doctorId do corpo da requisição - senão qualquer um se
+// autodeclara admin ou médico. Ela só serve pra criar o PRIMEIRO usuário
+// de um tenant novo (sempre admin). Contas de médico/assistente, e outros
+// admins depois do primeiro, são criadas por um admin logado em
+// modules/users (ver users.service.js) - nunca por aqui.
 async function register({ tenantId, nome, email, password }) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
+
   const existing = await User.findOne({ email: normalizedEmail });
   if (existing) {
     const err = new Error('Ja existe uma conta com este email.');
@@ -13,8 +20,15 @@ async function register({ tenantId, nome, email, password }) {
     throw err;
   }
 
+  const tenantJaTemUsuario = await User.exists({ tenantId });
+  if (tenantJaTemUsuario) {
+    const err = new Error('Esta clinica ja possui um administrador. Peca para ele criar sua conta.');
+    err.status = 409;
+    throw err;
+  }
+
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const user = await User.create({ tenantId, nome, email: normalizedEmail, passwordHash });
+  const user = await User.create({ tenantId, nome, email: normalizedEmail, passwordHash, role: 'admin' });
 
   return buildAuthResponse(user);
 }
@@ -38,7 +52,12 @@ async function login({ email, password }) {
 }
 
 function buildAuthResponse(user) {
-  const token = signToken({ sub: user.id, tenantId: user.tenantId, role: user.role });
+  const token = signToken({
+    sub: user.id,
+    tenantId: user.tenantId,
+    role: user.role,
+    doctorId: user.doctorId || undefined,
+  });
   return { token, user: user.toJSON() };
 }
 

@@ -6,15 +6,23 @@ import { getModuleBySlug } from '@/config/modules';
 import { useModuleMutations, useModuleRecords } from '@/hooks/useModuleRecords';
 import type { ModuleRecord } from '@/lib/api';
 import { ApiError } from '@/lib/api';
+import { getUser } from '@/lib/auth';
 import type { ModuleFormValues } from '@/lib/validation';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RecordFormModal } from '@/components/RecordFormModal';
 import { RecordsTable } from '@/components/RecordsTable';
+import NotFound from '@/pages/NotFound';
 
 export default function ModulePage() {
   const { moduleSlug } = useParams();
   const moduleConfig = getModuleBySlug(moduleSlug);
+  const role = getUser()?.role;
+
+  const canView = !!moduleConfig && !!role && moduleConfig.permissions.view.includes(role);
+  const canCreate = !!moduleConfig && !!role && !!moduleConfig.permissions.create?.includes(role);
+  const canEdit = !!moduleConfig && !!role && !!moduleConfig.permissions.edit?.includes(role);
+  const canDelete = !!moduleConfig && !!role && !!moduleConfig.permissions.delete?.includes(role);
 
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
@@ -34,7 +42,17 @@ export default function ModulePage() {
   }, [data, search, moduleConfig]);
 
   if (!moduleConfig) {
-    return <Navigate to="/404" replace />;
+    // Renderiza direto em vez de `<Navigate to="/404">`: "/404" tem um
+    // segmento so, entao o React Router entende como uma rota valida de
+    // ":moduleSlug" (mais especifica que o catch-all "*") e cairia de volta
+    // aqui, num loop de redirecionamento.
+    return <NotFound />;
+  }
+
+  if (!canView) {
+    // Modulo existe, mas o papel logado nao tem acesso - "/" e uma rota
+    // literal (index), entao aqui um redirect de verdade e seguro.
+    return <Navigate to="/" replace />;
   }
 
   function handleCreateClick() {
@@ -99,10 +117,12 @@ export default function ModulePage() {
           )}
         </div>
 
-        <Button onClick={handleCreateClick} className="shrink-0">
-          <Plus className="size-4" />
-          Novo
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreateClick} className="shrink-0">
+            <Plus className="size-4" />
+            Novo
+          </Button>
+        )}
       </div>
 
       <div className="rounded-[var(--radius-lg)] border border-border bg-surface shadow-sm">
@@ -119,6 +139,8 @@ export default function ModulePage() {
             records={filteredRecords}
             isLoading={isLoading}
             hasFilters={!!search.trim()}
+            canEdit={canEdit}
+            canDelete={canDelete}
             onEdit={handleEditClick}
             onDelete={setDeletingRecord}
           />

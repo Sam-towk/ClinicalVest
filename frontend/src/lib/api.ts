@@ -55,6 +55,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return parseResponse<T>(res);
 }
 
+export interface AdminDashboardSummary {
+  medicosDePlantao: number;
+  pacientesAguardando: number;
+  pacientesAtendidosHoje: number;
+}
+
 export const api = {
   list: (resource: string) => request<ModuleRecord[]>(`/${resource}`),
   get: (resource: string, id: string) => request<ModuleRecord>(`/${resource}/${id}`),
@@ -63,6 +69,11 @@ export const api = {
   update: (resource: string, id: string, data: Record<string, unknown>) =>
     request<ModuleRecord>(`/${resource}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (resource: string, id: string) => request<null>(`/${resource}/${id}`, { method: 'DELETE' }),
+};
+
+// So admin tem permissao no backend pra chamar isso (403 pra qualquer outro papel).
+export const dashboardApi = {
+  adminSummary: () => request<AdminDashboardSummary>('/dashboard/admin-summary'),
 };
 
 interface AuthResponse {

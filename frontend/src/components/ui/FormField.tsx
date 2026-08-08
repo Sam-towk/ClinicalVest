@@ -55,6 +55,7 @@ export function FormField({ field, register, error }: FormFieldProps) {
           id={inputId}
           type={field.type}
           placeholder={field.placeholder}
+          autoComplete={field.type === 'password' ? 'new-password' : undefined}
           aria-invalid={!!error}
           aria-describedby={describedBy}
           className={clsx(CONTROL_CLASSES, error && 'border-danger focus:ring-danger/30 focus:border-danger')}

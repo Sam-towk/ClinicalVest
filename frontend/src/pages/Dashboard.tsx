@@ -3,10 +3,12 @@ import { Users, CalendarClock, Ticket, Share2, ArrowRight } from 'lucide-react';
 import { modules } from '@/config/modules';
 import { useModuleRecords } from '@/hooks/useModuleRecords';
 import { StatCard } from '@/components/StatCard';
+import { AdminDashboard } from '@/pages/AdminDashboard';
 import { getUser } from '@/lib/auth';
 
 export default function Dashboard() {
   const user = getUser();
+  const visibleModules = modules.filter((mod) => !!user && mod.permissions.view.includes(user.role));
   const patients = useModuleRecords('patients');
   const scheduling = useModuleRecords('scheduling');
   const queue = useModuleRecords('queue');
@@ -26,17 +28,21 @@ export default function Dashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Users} label="Pacientes cadastrados" value={patients.data?.length} isLoading={patients.isLoading} />
-        <StatCard icon={CalendarClock} label="Agendamentos" value={scheduling.data?.length} isLoading={scheduling.isLoading} />
-        <StatCard icon={Ticket} label="Na fila digital" value={queue.data?.length} isLoading={queue.isLoading} />
-        <StatCard icon={Share2} label="Encaminhamentos" value={pendingReferrals} isLoading={referralsLoading} />
-      </div>
+      {user?.role === 'admin' ? (
+        <AdminDashboard />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={Users} label="Pacientes cadastrados" value={patients.data?.length} isLoading={patients.isLoading} />
+          <StatCard icon={CalendarClock} label="Agendamentos" value={scheduling.data?.length} isLoading={scheduling.isLoading} />
+          <StatCard icon={Ticket} label="Na fila digital" value={queue.data?.length} isLoading={queue.isLoading} />
+          <StatCard icon={Share2} label="Encaminhamentos" value={pendingReferrals} isLoading={referralsLoading} />
+        </div>
+      )}
 
       <div>
         <h3 className="font-heading text-lg font-semibold text-text">Modulos</h3>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {modules.map((mod) => {
+          {visibleModules.map((mod) => {
             const Icon = mod.icon;
             return (
               <Link

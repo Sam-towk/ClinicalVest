@@ -1,12 +1,16 @@
 const TOKEN_KEY = 'cv_token';
 const USER_KEY = 'cv_user';
 
+export type Role = 'admin' | 'medico' | 'assistente';
+
 export interface AuthUser {
   id: string;
   tenantId: string;
   nome: string;
   email: string;
-  role: string;
+  role: Role;
+  // So vem preenchido quando role === 'medico'.
+  doctorId?: string | null;
 }
 
 export function getToken(): string | null {
