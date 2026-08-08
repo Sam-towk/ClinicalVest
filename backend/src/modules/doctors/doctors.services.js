@@ -1,4 +1,3 @@
-// Service = unica camada que fala com o banco. Controller nunca monta query direto.
 const mongoose = require('mongoose');
 const Doctor = require('../../models/Doctor');
 const User = require('../../models/User');
@@ -29,11 +28,6 @@ async function update(tenantId, id, data) {
 async function remove(tenantId, id) {
   if (!mongoose.isValidObjectId(id)) return;
 
-  // Uma conta de login (User.doctorId) apontando pra um Doctor que sumiu
-  // quebraria o filtro "so os meus" desse medico (ele deixaria de enxergar
-  // qualquer coisa, silenciosamente). Historico em Appointment/MedicalRecord/
-  // etc. pode conviver com um doctorId orfao (e so registro passado), mas a
-  // conta de login ativa nao pode.
   const linkedUser = await User.exists({ tenantId, doctorId: id });
   if (linkedUser) {
     const err = new Error('Existe uma conta de usuario vinculada a este medico. Remova ou desvincule a conta antes de excluir o cadastro.');

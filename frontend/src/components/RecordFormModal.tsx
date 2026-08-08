@@ -22,9 +22,6 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
   const isEditing = !!defaultValues;
   const role = getUser()?.role;
 
-  // 'doctors' e o unico resource usado como optionsSource hoje - chamado
-  // incondicionalmente (nunca dentro de laco/condicional) pra nao violar as
-  // regras de hooks quando o usuario navega entre modulos diferentes.
   const { data: doctorOptions } = useModuleRecords('doctors');
 
   const visibleFields = useMemo(() => {

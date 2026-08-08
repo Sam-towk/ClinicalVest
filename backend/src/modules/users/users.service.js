@@ -1,6 +1,3 @@
-// Modulo: Usuarios (contas de login)
-// So existe pra admin gerenciar quem tem acesso ao sistema dentro do proprio
-// tenant - diferente de /api/auth/register, que so cria o admin inicial.
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../../models/User');

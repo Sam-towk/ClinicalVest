@@ -3,14 +3,11 @@ import { Stethoscope, Hourglass, CheckCircle2 } from 'lucide-react';
 import { dashboardApi } from '@/lib/api';
 import { StatCard } from '@/components/StatCard';
 
-// So renderizado pra role === 'admin' (ver Dashboard.tsx). O endpoint por
-// baixo (/dashboard/admin-summary) tambem e admin-only no backend - a
-// checagem aqui e so pra nao nem tentar chamar a API com outro papel.
 export function AdminDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', 'admin-summary'],
     queryFn: dashboardApi.adminSummary,
-    refetchInterval: 30_000, // fila e plantao mudam ao longo do dia
+    refetchInterval: 30_000,
   });
 
   return (

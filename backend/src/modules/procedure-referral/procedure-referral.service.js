@@ -1,12 +1,7 @@
-// Modulo: Encaminhamento de procedimentos
-// Service = unica camada que fala com o banco. Controller nunca monta query direto.
 const mongoose = require('mongoose');
 const ProcedureReferral = require('../../models/ProcedureReferral');
 const Doctor = require('../../models/Doctor');
 
-// So o medico que fica "dono" de um encaminhamento tem seu acesso restrito
-// ao proprio criado - admin e assistente enxergam tudo (precisam acompanhar
-// a rota logistica de qualquer encaminhamento da clinica).
 function scopedFilter(tenantId, requester) {
   const filter = { tenantId };
   if (requester.role === 'medico') filter.doctorId = requester.doctorId;
@@ -26,8 +21,6 @@ async function create(tenantId, data, requester) {
   let doctorId = requester.doctorId;
 
   if (requester.role === 'assistente') {
-    // Assistente registra em nome de um medico (indicacao verbal) - precisa
-    // dizer qual, e esse medico precisa existir nesta clinica.
     doctorId = data?.doctorId;
     if (!mongoose.isValidObjectId(doctorId) || !(await Doctor.exists({ _id: doctorId, tenantId }))) {
       const err = new Error('doctorId invalido ou de outra clinica.');
@@ -40,8 +33,6 @@ async function create(tenantId, data, requester) {
   return ProcedureReferral.create({ ...safeData, tenantId, doctorId });
 }
 
-// Campos clinicos so quem criou (medico) edita; setor_destino (logistica) e
-// editavel por qualquer papel com acesso de edicao a este modulo.
 const CLINICAL_FIELDS = ['procedimento', 'nivel_prioridade'];
 const LOGISTICS_FIELDS = ['setor_destino'];
 

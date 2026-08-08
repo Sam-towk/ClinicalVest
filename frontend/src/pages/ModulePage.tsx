@@ -42,16 +42,10 @@ export default function ModulePage() {
   }, [data, search, moduleConfig]);
 
   if (!moduleConfig) {
-    // Renderiza direto em vez de `<Navigate to="/404">`: "/404" tem um
-    // segmento so, entao o React Router entende como uma rota valida de
-    // ":moduleSlug" (mais especifica que o catch-all "*") e cairia de volta
-    // aqui, num loop de redirecionamento.
     return <NotFound />;
   }
 
   if (!canView) {
-    // Modulo existe, mas o papel logado nao tem acesso - "/" e uma rota
-    // literal (index), entao aqui um redirect de verdade e seguro.
     return <Navigate to="/" replace />;
   }
 

@@ -34,8 +34,6 @@ async function parseResponse<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-// Requisicoes autenticadas: o tenant e identificado pelo JWT do usuario logado,
-// nunca por um valor enviado pelo cliente.
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -71,7 +69,6 @@ export const api = {
   remove: (resource: string, id: string) => request<null>(`/${resource}/${id}`, { method: 'DELETE' }),
 };
 
-// So admin tem permissao no backend pra chamar isso (403 pra qualquer outro papel).
 export const dashboardApi = {
   adminSummary: () => request<AdminDashboardSummary>('/dashboard/admin-summary'),
 };

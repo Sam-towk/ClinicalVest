@@ -67,9 +67,6 @@ export const modules: ModuleConfig[] = [
     },
     fields: [
       { key: 'paciente', label: 'Paciente', type: 'text', required: true, placeholder: 'Nome do paciente' },
-      // CID e alergias sao dado clinico sensivel - o backend ja remove esses
-      // campos da resposta pro assistente (medical-records.service.js), aqui
-      // so evitamos mostrar uma coluna/campo que vai chegar sempre vazio.
       {
         key: 'alergias',
         label: 'Alergias',
@@ -100,13 +97,7 @@ export const modules: ModuleConfig[] = [
       delete: ['admin', 'assistente'],
     },
     fields: [
-      // Medico so pode mudar o status da propria consulta (ver
-      // scheduling.service.js) - os outros campos ficam ocultos pra ele no
-      // formulario de edicao, ja que o backend ignora qualquer valor
-      // enviado neles.
       { key: 'paciente', label: 'Paciente', type: 'text', required: true, hideForRoles: ['medico'] },
-      // Antes era um campo de texto livre ("profissional"); agora referencia
-      // um Doctor de verdade, entao vira um select alimentado por /api/doctors.
       { key: 'doctorId', label: 'Profissional', type: 'select', required: true, optionsSource: DOCTOR_OPTIONS_SOURCE, hideInTable: true, hideForRoles: ['medico'] },
       { key: 'doctorNome', label: 'Profissional', type: 'text', hideInForm: true },
       { key: 'data_hora', label: 'Data e hora', type: 'text', placeholder: 'Ex: 20/08/2026 14:30', hideForRoles: ['medico'] },
@@ -174,8 +165,6 @@ export const modules: ModuleConfig[] = [
     },
     fields: [
       { key: 'paciente', label: 'Paciente', type: 'text', required: true },
-      // So aparece pro assistente: quando é o médico logado quem cria, o
-      // backend usa o doctorId dele automaticamente e ignora este campo.
       {
         key: 'doctorId',
         label: 'Médico responsável',
@@ -264,14 +253,10 @@ export const modules: ModuleConfig[] = [
     icon: UserCog,
     badgeField: 'role',
     searchPlaceholder: 'Buscar por nome ou email...',
-    // So admin gerencia contas - o backend (users.routes.js) exige requireRole('admin')
-    // em toda a rota, isto aqui e so pra nem mostrar o modulo pros outros papeis.
     permissions: {
       view: ['admin'],
       create: ['admin'],
       delete: ['admin'],
-      // Sem 'edit': trocar role/vinculo de uma conta existente nao esta
-      // implementado ainda - pra corrigir, exclua a conta e crie de novo.
     },
     fields: [
       { key: 'nome', label: 'Nome', type: 'text', required: true },

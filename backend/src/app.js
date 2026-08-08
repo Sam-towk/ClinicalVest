@@ -19,7 +19,6 @@ const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 
 const app = express();
 
-// Atras de proxy (Docker/Nginx) para o rate limiter identificar o IP real.
 app.set('trust proxy', 1);
 
 app.use(helmet());
@@ -37,8 +36,6 @@ app.use(
 
 app.use(express.json({ limit: '100kb' }));
 
-// Limite geral pra API inteira; login/registro tem um limite mais apertado
-// definido dentro de auth.routes.js.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
@@ -49,12 +46,11 @@ app.use('/api', apiLimiter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Login/registro sao publicos - o resto da API exige um JWT valido, do qual
-// o tenantId e extraido (nunca de um header enviado pelo cliente).
+// Rotas publicas
 app.use('/api/auth', authRoutes);
 app.use('/api', authMiddleware);
 
-// Um modulo = uma pasta = um dominio do sistema (mesma divisao do roadmap original)
+// Rotas por modulo (protegidas)
 app.use('/api/patients', patientsRoutes);
 app.use('/api/medical-records', medicalRecordsRoutes);
 app.use('/api/scheduling', schedulingRoutes);

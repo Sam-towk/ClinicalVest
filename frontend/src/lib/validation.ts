@@ -12,8 +12,6 @@ export function buildModuleSchema(fields: ModuleField[]) {
         ? z.string().trim().min(1, 'Campo obrigatorio').email('Informe um email valido')
         : z.string().trim().email('Informe um email valido').or(z.literal(''));
     } else if (field.type === 'password') {
-      // Mesmo minimo exigido pelo backend (auth.controller.js) - falhar aqui
-      // e mais rapido pro usuario do que so descobrir no 400 da API.
       schema = z.string().min(8, 'Minimo de 8 caracteres');
     } else if (field.required) {
       schema = z.string().trim().min(1, 'Campo obrigatorio');

@@ -9,7 +9,6 @@ export interface AuthUser {
   nome: string;
   email: string;
   role: Role;
-  // So vem preenchido quando role === 'medico'.
   doctorId?: string | null;
 }
 

@@ -1,5 +1,3 @@
-// Modulo: Agendamentos
-// Service = unica camada que fala com o banco. Controller nunca monta query direto.
 const mongoose = require('mongoose');
 const Appointment = require('../../models/Appointment');
 const Doctor = require('../../models/Doctor');
@@ -30,9 +28,6 @@ async function create(tenantId, data) {
 
 async function update(tenantId, id, data, requester) {
   if (!mongoose.isValidObjectId(id)) return null;
-  // O medico so pode mudar o status da propria consulta (confirmar, iniciar,
-  // concluir) - nao remarcar, trocar de paciente ou "roubar" a consulta de
-  // outro medico. Quem remarca/reatribui e admin ou assistente.
   const safeData =
     requester.role === 'medico' ? { status: data?.status } : (({ tenantId: _t, ...rest }) => rest)(data || {});
 

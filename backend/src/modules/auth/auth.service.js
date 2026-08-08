@@ -4,12 +4,6 @@ const { signToken } = require('../../utils/jwt');
 
 const SALT_ROUNDS = 12;
 
-// Esta rota é pública (não tem authMiddleware na frente), então não pode
-// aceitar role/doctorId do corpo da requisição - senão qualquer um se
-// autodeclara admin ou médico. Ela só serve pra criar o PRIMEIRO usuário
-// de um tenant novo (sempre admin). Contas de médico/assistente, e outros
-// admins depois do primeiro, são criadas por um admin logado em
-// modules/users (ver users.service.js) - nunca por aqui.
 async function register({ tenantId, nome, email, password }) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
