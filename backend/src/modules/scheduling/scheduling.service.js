@@ -1,6 +1,8 @@
-const mongoose = require('mongoose');
-const Appointment = require('../../models/Appointment');
-const Doctor = require('../../models/Doctor');
+const { prisma } = require('../../config/prisma');
+const isValidUuid = require('../../utils/isValidUuid');
+const pickFields = require('../../utils/pickFields');
+
+const WRITABLE = ['paciente', 'doctorId', 'data_hora', 'status'];
 
 function scopedFilter(tenantId, requester) {
   const filter = { tenantId };
@@ -9,38 +11,47 @@ function scopedFilter(tenantId, requester) {
 }
 
 async function findAll(tenantId, requester) {
-  return Appointment.find(scopedFilter(tenantId, requester)).sort({ createdAt: -1 });
+  return prisma.appointment.findMany({ where: scopedFilter(tenantId, requester), orderBy: { createdAt: 'desc' } });
 }
 
 async function findById(tenantId, id, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
-  return Appointment.findOne({ _id: id, ...scopedFilter(tenantId, requester) });
+  if (!isValidUuid(id)) return null;
+  return prisma.appointment.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
 }
 
 async function create(tenantId, data) {
-  if (!mongoose.isValidObjectId(data?.doctorId) || !(await Doctor.exists({ _id: data.doctorId, tenantId }))) {
+  const safeData = pickFields(data, WRITABLE);
+  if (!isValidUuid(safeData.doctorId) || !(await prisma.doctor.findFirst({ where: { id: safeData.doctorId, tenantId }, select: { id: true } }))) {
     const err = new Error('doctorId invalido ou de outra clinica.');
     err.status = 400;
     throw err;
   }
-  return Appointment.create({ ...data, tenantId });
+  return prisma.appointment.create({ data: { ...safeData, tenantId } });
 }
 
 async function update(tenantId, id, data, requester) {
-  if (!mongoose.isValidObjectId(id)) return null;
+  if (!isValidUuid(id)) return null;
   const safeData =
-    requester.role === 'medico' ? { status: data?.status } : (({ tenantId: _t, ...rest }) => rest)(data || {});
+    requester.role === 'medico'
+      ? pickFields(data, ['status'])
+      : pickFields(data, WRITABLE);
 
-  return Appointment.findOneAndUpdate(
-    { _id: id, ...scopedFilter(tenantId, requester) },
-    { $set: safeData },
-    { new: true, runValidators: true }
-  );
+  if (safeData.doctorId !== undefined) {
+    if (!isValidUuid(safeData.doctorId) || !(await prisma.doctor.findFirst({ where: { id: safeData.doctorId, tenantId }, select: { id: true } }))) {
+      const err = new Error('doctorId invalido ou de outra clinica.');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  const existing = await prisma.appointment.findFirst({ where: { id, ...scopedFilter(tenantId, requester) } });
+  if (!existing) return null;
+  return prisma.appointment.update({ where: { id }, data: safeData });
 }
 
 async function remove(tenantId, id) {
-  if (!mongoose.isValidObjectId(id)) return;
-  await Appointment.deleteOne({ _id: id, tenantId });
+  if (!isValidUuid(id)) return;
+  await prisma.appointment.deleteMany({ where: { id, tenantId } });
 }
 
 module.exports = { findAll, findById, create, update, remove };

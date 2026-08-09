@@ -22,6 +22,10 @@ export interface ModuleField {
   hideInTable?: boolean;
   /** Campo so existe pra exibicao (preenchido pelo backend) - nunca aparece no formulario */
   hideInForm?: boolean;
+  /** Campo so no formulario de criacao (nao aparece na edicao) */
+  createOnly?: boolean;
+  /** Valor inicial no formulario de criacao */
+  defaultValue?: string;
   /** Esconde o campo do formulario pra quem esta logado com um desses papeis */
   hideForRoles?: Role[];
 }

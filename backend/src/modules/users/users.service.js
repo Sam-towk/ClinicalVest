@@ -1,12 +1,12 @@
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
-const User = require('../../models/User');
+const { prisma } = require('../../config/prisma');
+const isValidUuid = require('../../utils/isValidUuid');
 
 const SALT_ROUNDS = 12;
 const ROLES_CRIAVEIS = ['admin', 'medico', 'assistente'];
 
 async function findAll(tenantId) {
-  return User.find({ tenantId }).sort({ createdAt: -1 });
+  return prisma.user.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
 }
 
 async function create(tenantId, { nome, email, password, role, doctorId }) {
@@ -16,14 +16,14 @@ async function create(tenantId, { nome, email, password, role, doctorId }) {
     throw err;
   }
 
-  if (role === 'medico' && !mongoose.isValidObjectId(doctorId)) {
+  if (role === 'medico' && !isValidUuid(doctorId)) {
     const err = new Error('doctorId e obrigatorio e precisa ser valido quando role e "medico".');
     err.status = 400;
     throw err;
   }
 
   const normalizedEmail = String(email || '').trim().toLowerCase();
-  const existing = await User.findOne({ email: normalizedEmail });
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     const err = new Error('Ja existe uma conta com este email.');
     err.status = 409;
@@ -31,26 +31,28 @@ async function create(tenantId, { nome, email, password, role, doctorId }) {
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const user = await User.create({
-    tenantId,
-    nome,
-    email: normalizedEmail,
-    passwordHash,
-    role,
-    doctorId: role === 'medico' ? doctorId : null,
+  const user = await prisma.user.create({
+    data: {
+      tenantId,
+      nome,
+      email: normalizedEmail,
+      passwordHash,
+      role,
+      doctorId: role === 'medico' ? doctorId : null,
+    },
   });
 
   return user;
 }
 
 async function remove(tenantId, id, requesterId) {
-  if (!mongoose.isValidObjectId(id)) return;
+  if (!isValidUuid(id)) return;
   if (id === requesterId) {
     const err = new Error('Voce nao pode excluir a propria conta.');
     err.status = 400;
     throw err;
   }
-  await User.deleteOne({ _id: id, tenantId });
+  await prisma.user.deleteMany({ where: { id, tenantId } });
 }
 
 module.exports = { findAll, create, remove };

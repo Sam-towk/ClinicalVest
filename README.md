@@ -4,23 +4,23 @@
 
 # Clinical Vest
 
-Sistema multi-tenant de gestão clínica — pacientes, prontuários, agendamentos, fila digital e encaminhamentos para clínicas e consultórios veterinários.
+Sistema multi-tenant de gestão clínica — pacientes, prontuários, agendamentos, fila digital e encaminhamentos para clínicas de atendimento humano.
 
 </div>
 
-Clinical Vest é um SaaS enxuto para clínicas e consultórios veterinários que precisam gerenciar pacientes, consultas e encaminhamentos sem adotar um sistema hospitalar completo. Cada conta é um tenant isolado: todo registro pertence à clínica que o criou, e o acesso é validado no servidor a partir de um JWT assinado — nunca de um header enviado pelo cliente.
+Clinical Vest é um SaaS enxuto para clínicas e consultórios que precisam gerenciar pacientes, consultas e encaminhamentos sem adotar um sistema hospitalar completo. Não cobre veterinário/pets. Cada conta é um tenant isolado: todo registro pertence à clínica que o criou, e o acesso é validado no servidor a partir de um JWT assinado — nunca de um header enviado pelo cliente.
 
 O sistema é um monorepo pequeno:
 
-- **`backend/`** — API REST em Node.js (Express) + MongoDB (Mongoose)
+- **`backend/`** — API REST em Node.js (Express) + Supabase/Postgres (Prisma)
 - **`frontend/`** — SPA em React + TypeScript, construída com Vite e Tailwind CSS
 
 > [!NOTE]
-> **Sobre este projeto.** O Clinical Vest é um projeto de estudo, criado para consolidar na prática conceitos de Node.js, TypeScript, arquitetura de APIs REST e persistência com MongoDB vistos na faculdade — e para aplicar, no desenho das telas e fluxos (fila digital, agendamentos, encaminhamentos), conceitos de Interação Humano-Computador (IHC) trabalhados na disciplina. Não é um produto em produção nem se destina a uso clínico real.
+> **Sobre este projeto.** O Clinical Vest é um projeto de estudo, criado para consolidar na prática conceitos de Node.js, TypeScript, arquitetura de APIs REST e persistência com Postgres vistos na faculdade — e para aplicar, no desenho das telas e fluxos (fila digital, agendamentos, encaminhamentos), conceitos de Interação Humano-Computador (IHC) trabalhados na disciplina. Não é um produto em produção nem se destina a uso clínico real.
 
 ## Funcionalidades
 
-- **Pacientes** — cadastro central de pacientes humanos e animais (espécie, documento/tutor, contato)
+- **Pacientes** — cadastro de pacientes humanos (CPF, contato); ao criar, opção de já entrar na fila digital
 - **Prontuários** — alergias, exames solicitados, itens prescritos e classificação da doença (CID)
 - **Agendamentos** — marcação de consultas com acompanhamento de status (agendado, confirmado, em andamento, concluído, cancelado)
 - **Fila digital** — substitui a retirada física de senha, com prioridade e status por paciente
@@ -36,16 +36,17 @@ O sistema é um monorepo pequeno:
 Cada módulo do backend segue a mesma camada `routes → controller → service → model`, uma pasta por domínio:
 
 ```
-backend/src/
-├── modules/<modulo>/
-│   ├── <modulo>.routes.js       # router Express + autenticacao
-│   ├── <modulo>.controller.js   # tratamento de request/response
-│   └── <modulo>.service(s).js   # regra de negocio, fala com o model
-├── models/                      # um schema Mongoose por entidade
-├── middlewares/                 # auth.middleware.js, errorHandler.js
-├── config/db.js                 # conexao com o Mongo
-├── app.js                       # montagem da app Express
-└── server.js                    # ponto de entrada
+backend/
+├── prisma/schema.prisma         # schema do banco (models, enums, indices)
+├── src/
+│   ├── modules/<modulo>/
+│   │   ├── <modulo>.routes.js       # router Express + autenticacao
+│   │   ├── <modulo>.controller.js   # tratamento de request/response
+│   │   └── <modulo>.service(s).js   # regra de negocio, fala com o Prisma Client
+│   ├── middlewares/              # auth.middleware.js, errorHandler.js
+│   ├── config/prisma.js          # conexao com o Postgres (Supabase) via Prisma
+│   ├── app.js                    # montagem da app Express
+│   └── server.js                 # ponto de entrada
 ```
 
 No frontend, cada módulo (pacientes, prontuários, agendamentos, fila, encaminhamentos, médicos) é descrito de forma declarativa em [`frontend/src/config/modules.ts`](frontend/src/config/modules.ts) — campos, labels e opções de select — e renderizado por uma única `ModulePage` genérica, então adicionar um módulo raramente exige uma página nova.
@@ -55,23 +56,36 @@ No frontend, cada módulo (pacientes, prontuários, agendamentos, fila, encaminh
 ### Pré-requisitos
 
 - [Node.js](https://nodejs.org/) 20+
-- [Docker](https://www.docker.com/) (recomendado) ou uma instância de MongoDB local/remota
+- Um projeto [Supabase](https://supabase.com/) (gratuito) — crie um em supabase.com e pegue as connection strings em *Project Settings → Database → Connection string*
+- [Docker](https://www.docker.com/) (opcional, só para rodar a API containerizada)
+
+### Configurar o banco (Supabase)
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edite `backend/.env` e defina:
+- `DATABASE_URL` e `DIRECT_URL` — connection strings do seu projeto Supabase (veja os comentários em `.env.example`)
+- `JWT_SECRET` — um valor aleatório forte (ex: `openssl rand -hex 32`)
+
+Depois aplique o schema no banco (a migration `init` já vem no repo):
+
+```bash
+npm install
+npm run migrate:deploy
+```
 
 ### Rodando com Docker
 
-```bash
-# na raiz do repositorio
-cp .env.example .env               # defina MONGO_ROOT_USER / MONGO_ROOT_PASSWORD
-cp backend/.env.example backend/.env
-```
-
-Edite `backend/.env` e defina um `JWT_SECRET` forte (ex: `openssl rand -hex 32`), depois:
+Com `backend/.env` preenchido (URLs do **pooler** Supabase + `JWT_SECRET`):
 
 ```bash
 docker compose up --build
 ```
 
-Isso sobe o MongoDB e a API do backend em `http://localhost:3000`. O `MONGO_URI` de `backend/.env` é sobrescrito dentro da rede do compose, para o backend alcançar o Mongo pelo serviço `db`.
+Sobe só o backend em `http://localhost:3000`. No start o container roda `prisma migrate deploy` e depois a API. O Postgres fica no Supabase (não há serviço de banco no Compose).
 
 <details>
 <summary>Outros comandos úteis do Docker</summary>
@@ -79,11 +93,9 @@ Isso sobe o MongoDB e a API do backend em `http://localhost:3000`. O `MONGO_URI`
 ```bash
 docker compose up --build -d       # subir em segundo plano
 docker compose logs -f backend     # acompanhar os logs do backend
-docker compose down                # parar os containers, mantendo o volume do Mongo
-docker compose down -v             # parar e apagar o volume do Mongo
+docker compose down                # parar o container
 docker compose build --no-cache backend
 docker compose exec backend sh     # abrir um shell no container do backend
-docker compose exec db mongosh saas_hospitalar
 ```
 
 </details>
@@ -91,10 +103,8 @@ docker compose exec db mongosh saas_hospitalar
 ### Rodando manualmente
 
 ```bash
-# backend
+# backend (depois de configurar o banco, ver acima)
 cd backend
-cp .env.example .env               # defina MONGO_URI e JWT_SECRET
-npm install
 npm run dev                        # http://localhost:3000
 ```
 
@@ -106,18 +116,15 @@ npm install
 npm run dev                        # http://localhost:5173
 ```
 
-> [!IMPORTANT]
-> No modo manual é preciso ter uma instância de MongoDB acessível — ajuste `MONGO_URI` em `backend/.env` caso o Mongo não esteja em `localhost:27017`.
-
 Com os dois rodando, abra `http://localhost:5173`, registre uma conta de clínica e faça login.
 
 ## Configuração
 
 | Variável | Onde | Descrição |
 | --- | --- | --- |
-| `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` | `.env` na raiz | Credenciais usadas pelo `docker-compose.yml` para provisionar o MongoDB |
 | `PORT` | `backend/.env` | Porta em que a API escuta (padrão `3000`) |
-| `MONGO_URI` | `backend/.env` | String de conexão do MongoDB (modo manual) |
+| `DATABASE_URL` | `backend/.env` | Connection string do Postgres (Supabase) via connection pooler — usada em runtime |
+| `DIRECT_URL` | `backend/.env` | Connection string direta do Postgres (Supabase) — usada só pelo Prisma CLI (`migrate`) |
 | `JWT_SECRET` | `backend/.env` | Segredo usado para assinar os tokens de autenticação — obrigatório, sem valor padrão |
 | `JWT_EXPIRES_IN` | `backend/.env` | Tempo de vida do token (padrão `8h`) |
 | `CORS_ORIGIN` | `backend/.env` | Lista de origens autorizadas a chamar a API, separadas por vírgula |
@@ -143,5 +150,5 @@ Login e registro têm um rate limit mais restrito (10 requisições / 15 min) qu
 
 ## Stack
 
-**Backend:** Express, Mongoose, JSON Web Tokens, bcryptjs, Helmet, express-rate-limit
+**Backend:** Express, Prisma, Supabase (Postgres), JSON Web Tokens, bcryptjs, Helmet, express-rate-limit
 **Frontend:** React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form, Zod, Radix UI

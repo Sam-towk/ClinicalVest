@@ -1,15 +1,17 @@
 const service = require('./users.service');
+const toPublicUser = require('../../utils/toPublicUser');
 
 async function list(req, res, next) {
   try {
-    res.json(await service.findAll(req.tenantId));
+    const users = await service.findAll(req.tenantId);
+    res.json(users.map(toPublicUser));
   } catch (err) { next(err); }
 }
 
 async function create(req, res, next) {
   try {
     const user = await service.create(req.tenantId, req.body);
-    res.status(201).json(user);
+    res.status(201).json(toPublicUser(user));
   } catch (err) { next(err); }
 }
 

@@ -8,7 +8,7 @@ function requesterFrom(req) {
 async function list(req, res, next) {
   try {
     const items = await service.findAll(req.tenantId, requesterFrom(req));
-    res.json(await withDoctorNome(req.tenantId, items.map((item) => item.toJSON())));
+    res.json(await withDoctorNome(req.tenantId, items));
   } catch (err) { next(err); }
 }
 
@@ -16,7 +16,7 @@ async function getOne(req, res, next) {
   try {
     const item = await service.findById(req.tenantId, req.params.id, requesterFrom(req));
     if (!item) return res.status(404).json({ error: 'Agendamentos nao encontrado(a).' });
-    const [withName] = await withDoctorNome(req.tenantId, [item.toJSON()]);
+    const [withName] = await withDoctorNome(req.tenantId, [item]);
     res.json(withName);
   } catch (err) { next(err); }
 }

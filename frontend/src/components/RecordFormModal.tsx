@@ -27,6 +27,7 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
   const visibleFields = useMemo(() => {
     return module.fields
       .filter((field) => !field.hideInForm)
+      .filter((field) => !(isEditing && field.createOnly))
       .filter((field) => !(role && field.hideForRoles?.includes(role)))
       .map((field): ModuleField => {
         if (!field.optionsSource) return field;
@@ -36,9 +37,17 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
         }));
         return { ...field, options };
       });
-  }, [module.fields, role, doctorOptions]);
+  }, [module.fields, role, doctorOptions, isEditing]);
 
   const schema = buildModuleSchema(visibleFields);
+
+  const createDefaults = useMemo(() => {
+    const defaults: ModuleFormValues = {};
+    for (const field of visibleFields) {
+      if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+    }
+    return defaults;
+  }, [visibleFields]);
 
   const {
     register,
@@ -47,14 +56,14 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
     formState: { errors },
   } = useForm<ModuleFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues ?? {},
+    defaultValues: defaultValues ?? createDefaults,
   });
 
   useEffect(() => {
     if (open) {
-      reset(defaultValues ?? {});
+      reset(defaultValues ?? createDefaults);
     }
-  }, [open, defaultValues, reset]);
+  }, [open, defaultValues, createDefaults, reset]);
 
   return (
     <Modal
