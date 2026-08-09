@@ -8,7 +8,7 @@ Sistema multi-tenant de gestão clínica — pacientes, prontuários, agendament
 
 </div>
 
-Clinical Vest é um SaaS enxuto para clínicas e consultórios de **seres humanos** que precisam gerenciar pacientes, consultas e encaminhamentos sem adotar um sistema hospitalar completo. Não cobre veterinário/pets. Cada conta é um tenant isolado: todo registro pertence à clínica que o criou, e o acesso é validado no servidor a partir de um JWT assinado — nunca de um header enviado pelo cliente.
+Clinical Vest é um SaaS enxuto para clínicas e consultórios que precisam gerenciar pacientes, consultas e encaminhamentos sem adotar um sistema hospitalar completo. Não cobre veterinário/pets. Cada conta é um tenant isolado: todo registro pertence à clínica que o criou, e o acesso é validado no servidor a partir de um JWT assinado — nunca de um header enviado pelo cliente.
 
 O sistema é um monorepo pequeno:
 
