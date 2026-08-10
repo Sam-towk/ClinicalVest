@@ -1,10 +1,10 @@
 export type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 const TONE_KEYWORDS: Record<Exclude<Tone, 'neutral'>, string[]> = {
-  danger: ['alta', 'urgente', 'cancelad', 'critic', 'emergenc'],
-  warning: ['media', 'pendente', 'aguardando'],
-  info: ['chamado', 'agendado', 'andamento', 'baixa'],
-  success: ['atendido', 'concluid', 'confirmado', 'ativo', 'liberad'],
+  danger: ['alta', 'urgente', 'cancelad', 'critic', 'emergenc', 'faltou'],
+  warning: ['media', 'pendente', 'aguardando', 'pausado'],
+  info: ['chamado', 'agendado', 'andamento', 'baixa', 'em_atendimento', 'na_fila'],
+  success: ['atendido', 'concluid', 'confirmado', 'ativo', 'liberad', 'finalizada'],
 };
 
 function normalize(value: string): string {

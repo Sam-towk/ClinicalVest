@@ -27,7 +27,9 @@ async function parseResponse<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const message = (body && typeof body === 'object' && 'error' in body && String(body.error)) || `Erro na requisicao (${res.status})`;
+    const message =
+      (body && typeof body === 'object' && 'error' in body && String(body.error)) ||
+      `Erro na requisicao (${res.status})`;
     throw new ApiError(message, res.status);
   }
 
@@ -54,9 +56,115 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export interface AdminDashboardSummary {
-  medicosDePlantao: number;
-  pacientesAguardando: number;
-  pacientesAtendidosHoje: number;
+  atendimentosHoje: number;
+  atendimentosSemana: number;
+  pacientesAtivos: number;
+  taxaFalta: number;
+  atendimentosPorMedico: { doctorId: string; doctorNome: string; total: number }[];
+}
+
+export interface PatientSearchHit {
+  id: string;
+  nome: string;
+  documentoMascarado: string | null;
+  dataNasc: string | null;
+  ultimaConsulta: { data: string; doctorNome: string } | null;
+}
+
+export interface ConsultationCurrent {
+  consultation: {
+    id: string;
+    patientId: string;
+    doctorId: string;
+    queixa: string | null;
+    conduta: string | null;
+    cid: string | null;
+    status: string;
+    iniciadaEm: string;
+    finalizadaEm: string | null;
+  } | null;
+  context: {
+    patient: {
+      id: string;
+      nome: string;
+      documentoMascarado: string | null;
+      contato: string | null;
+      dataNasc: string | null;
+      alergias: string | null;
+      ultimaConsulta: string | null;
+    } | null;
+    continuousPrescriptions: {
+      id: string;
+      medicamento: string;
+      dose: string | null;
+      posologia: string | null;
+      encerradaEm: string | null;
+    }[];
+    conditions: { cid: string; desde: string; doctorNome: string }[];
+    recentConsultations: { id: string; data: string; doctorNome: string; resumo: string }[];
+    attached: {
+      prescriptions: { id: string; medicamento: string; dose: string | null; usoContinuo: boolean }[];
+      exams: { id: string; tipo: string; status: string }[];
+      certificates: { id: string; dias: number; cid: string | null }[];
+      referrals: { id: string; destino: string; motivo: string | null }[];
+    };
+    miniQueue: { next: string[]; waitingCount: number };
+  } | null;
+  miniQueue: { next: string[]; waitingCount: number };
+}
+
+export interface PatientSummary {
+  patient: {
+    id: string;
+    nome: string;
+    documento?: string | null;
+    documentoMascarado: string | null;
+    contato: string | null;
+    dataNasc: string | null;
+    observacoes: string | null;
+    alergias?: string | null;
+  };
+  continuousPrescriptions: {
+    id: string;
+    medicamento: string;
+    dose: string | null;
+    posologia: string | null;
+    usoContinuo: boolean;
+    encerradaEm: string | null;
+  }[];
+  conditions: { cid: string; desde: string; doctorNome: string }[];
+  consultations: {
+    id: string;
+    status: string;
+    iniciadaEm: string;
+    finalizadaEm: string | null;
+    doctorNome: string;
+    doctorId: string;
+    queixa?: string | null;
+    conduta?: string | null;
+    cid?: string | null;
+  }[];
+  prescriptions?: {
+    id: string;
+    medicamento: string;
+    dose: string | null;
+    posologia: string | null;
+    usoContinuo: boolean;
+    encerradaEm: string | null;
+    iniciadaEm: string;
+  }[];
+  exams: {
+    id: string;
+    tipo: string;
+    status: string;
+    createdAt: string;
+    justificativa?: string | null;
+    resultado?: string | null;
+  }[];
+  documents: {
+    certificates: { id: string; dias: number; cid?: string; createdAt: string; doctorNome: string }[];
+    referrals: { id: string; destino: string; motivo: string | null; createdAt: string; doctorNome: string }[];
+  };
 }
 
 export const api = {
@@ -71,6 +179,71 @@ export const api = {
 
 export const dashboardApi = {
   adminSummary: () => request<AdminDashboardSummary>('/dashboard/admin-summary'),
+};
+
+export const patientsApi = {
+  search: (q: string) => request<PatientSearchHit[]>(`/patients/search?q=${encodeURIComponent(q)}`),
+  summary: (id: string) => request<PatientSummary>(`/patients/${id}/summary`),
+};
+
+export const consultationsApi = {
+  current: () => request<ConsultationCurrent>('/consultations/current'),
+  history: () => request<unknown[]>('/consultations/history'),
+  patch: (id: string, data: Record<string, unknown>) =>
+    request(`/consultations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  pause: (id: string) => request(`/consultations/${id}/pause`, { method: 'POST' }),
+  finish: (id: string) =>
+    request<{ undoUntil: string; current: ConsultationCurrent }>(`/consultations/${id}/finish`, {
+      method: 'POST',
+    }),
+  undoFinish: (id: string) => request<ConsultationCurrent>(`/consultations/${id}/undo-finish`, { method: 'POST' }),
+  callNext: () => request<ConsultationCurrent>('/consultations/call-next', { method: 'POST' }),
+  addPrescription: (id: string, data: Record<string, unknown>) =>
+    request(`/consultations/${id}/prescriptions`, { method: 'POST', body: JSON.stringify(data) }),
+  renewPrescription: (id: string, prescriptionId: string) =>
+    request(`/consultations/${id}/prescriptions/${prescriptionId}/renew`, { method: 'POST' }),
+  addExam: (id: string, data: Record<string, unknown>) =>
+    request(`/consultations/${id}/exams`, { method: 'POST', body: JSON.stringify(data) }),
+  addCertificate: (id: string, data: Record<string, unknown>) =>
+    request<{ id: string; dias: number; cid: string | null; createdAt: string }>(
+      `/consultations/${id}/certificates`,
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+  addReferral: (id: string, data: Record<string, unknown>) =>
+    request(`/consultations/${id}/referrals`, { method: 'POST', body: JSON.stringify(data) }),
+  removeAttached: (id: string, kind: string, itemId: string) =>
+    request<null>(`/consultations/${id}/${kind}/${itemId}`, { method: 'DELETE' }),
+};
+
+export interface AppointmentRecord {
+  id: string;
+  patientId: string;
+  doctorId: string;
+  data_hora: string | null;
+  status: string | null;
+  paciente: string;
+  patientNome: string;
+  doctorNome: string;
+}
+
+export interface SchedulingRange {
+  slotMinutes: number;
+  items: AppointmentRecord[];
+}
+
+export const schedulingApi = {
+  range: (from: string, to: string, doctorId?: string) => {
+    const params = new URLSearchParams({ from, to });
+    if (doctorId) params.set('doctorId', doctorId);
+    return request<SchedulingRange>(`/scheduling/range?${params.toString()}`);
+  },
+};
+
+export const queueApi = {
+  encaminhar: (id: string, doctorId: string) =>
+    request(`/queue/${id}/encaminhar`, { method: 'POST', body: JSON.stringify({ doctorId }) }),
+  reorder: (orderedIds: string[]) =>
+    request('/queue/reorder', { method: 'POST', body: JSON.stringify({ orderedIds }) }),
 };
 
 interface AuthResponse {

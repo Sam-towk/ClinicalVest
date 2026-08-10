@@ -8,14 +8,12 @@ const errorHandler = require('./middlewares/errorHandler');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const patientsRoutes = require('./modules/patients/patients.routes');
-const medicalRecordsRoutes = require('./modules/medical-records/medical-records.routes');
 const schedulingRoutes = require('./modules/scheduling/scheduling.routes');
 const queueRoutes = require('./modules/queue/queue.routes');
-const medicationReferralRoutes = require('./modules/medication-referral/medication-referral.routes');
-const procedureReferralRoutes = require('./modules/procedure-referral/procedure-referral.routes');
 const doctorsRoutes = require('./modules/doctors/doctors.routes');
 const usersRoutes = require('./modules/users/users.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const consultationsRoutes = require('./modules/consultations/consultations.routes');
 
 const app = express();
 
@@ -46,17 +44,13 @@ app.use('/api', apiLimiter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Rotas publicas
 app.use('/api/auth', authRoutes);
 app.use('/api', authMiddleware);
 
-// Rotas por modulo (protegidas)
 app.use('/api/patients', patientsRoutes);
-app.use('/api/medical-records', medicalRecordsRoutes);
+app.use('/api/consultations', consultationsRoutes);
 app.use('/api/scheduling', schedulingRoutes);
 app.use('/api/queue', queueRoutes);
-app.use('/api/medication-referrals', medicationReferralRoutes);
-app.use('/api/procedure-referrals', procedureReferralRoutes);
 app.use('/api/doctors', doctorsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/dashboard', dashboardRoutes);

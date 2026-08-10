@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { Role } from '@/lib/auth';
 
-export type FieldType = 'text' | 'email' | 'tel' | 'password' | 'textarea' | 'select' | 'datetime-local';
+export type FieldType = 'text' | 'email' | 'tel' | 'password' | 'textarea' | 'select' | 'date' | 'datetime-local';
 
 export interface FieldOption {
   value: string;

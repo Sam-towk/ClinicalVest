@@ -5,10 +5,11 @@ export function recordsQueryKey(resource: string) {
   return ['records', resource] as const;
 }
 
-export function useModuleRecords(resource: string) {
+export function useModuleRecords(resource: string, enabled = true) {
   return useQuery({
     queryKey: recordsQueryKey(resource),
     queryFn: () => api.list(resource),
+    enabled: enabled && !!resource,
   });
 }
 

@@ -1,6 +1,5 @@
 // Prisma schema - Supabase (Postgres) como banco principal.
-// Isolamento multi-tenant continua sendo por tenantId filtrado em cada service,
-// igual ao modelo anterior no MongoDB - nao ha tabela Tenant.
+// Isolamento multi-tenant continua sendo por tenantId filtrado em cada service.
 
 generator client {
   provider = "prisma-client-js"
@@ -17,6 +16,28 @@ enum Role {
   assistente
 }
 
+enum ConsultationStatus {
+  rascunho
+  em_atendimento
+  pausada
+  finalizada
+}
+
+enum QueueStatus {
+  aguardando
+  em_atendimento
+  pausado
+  atendido
+  faltou
+}
+
+enum ExamStatus {
+  solicitado
+  em_andamento
+  disponivel
+  entregue
+}
+
 model Doctor {
   id            String   @id @default(uuid()) @db.Uuid
   tenantId      String
@@ -24,15 +45,15 @@ model Doctor {
   email         String?
   telefone      String?
   especialidade String?
-  plantao       String   @default("Não") // 'Sim' | 'Não' - validado no service, igual ao enum Mongoose anterior
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  users               User[]
-  appointments        Appointment[]
-  medicalRecords      MedicalRecord[]
-  medicationReferrals MedicationReferral[]
-  procedureReferrals  ProcedureReferral[]
+  users         User[]
+  appointments  Appointment[]
+  consultations Consultation[]
+  queueTickets  QueueTicket[]
+  certificates  Certificate[]
+  referrals     Referral[]
 
   @@index([tenantId])
   @@map("doctors")
@@ -56,101 +77,184 @@ model User {
 }
 
 model Patient {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String
-  nome      String
-  especie   String? // sempre "Humano" — clinica so atende pessoas
-  documento String? // CPF
-  contato   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String
+  nome         String
+  especie      String? // sempre "Humano"
+  documento    String? // CPF
+  contato      String?
+  dataNasc     DateTime?
+  alergias     String?
+  observacoes  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  consultations Consultation[]
+  prescriptions Prescription[]
+  appointments  Appointment[]
+  queueTickets  QueueTicket[]
+  examRequests  ExamRequest[]
+  certificates  Certificate[]
+  referrals     Referral[]
 
   @@index([tenantId])
+  @@index([tenantId, nome])
+  @@index([tenantId, documento])
   @@map("patients")
 }
 
 model Appointment {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
   tenantId  String
-  paciente  String
-  doctorId  String   @db.Uuid
-  data_hora String?
+  patientId String    @db.Uuid
+  doctorId  String    @db.Uuid
+  data_hora DateTime?
   status    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@index([doctorId])
+  @@index([patientId])
+  @@index([tenantId, data_hora])
   @@map("appointments")
 }
 
-model MedicalRecord {
-  id                   String   @id @default(uuid()) @db.Uuid
-  tenantId             String
-  paciente             String
-  doctorId             String   @db.Uuid
-  alergias             String?
-  exames_solicitados   String?
-  itens_prescritos     String?
-  classificacao_doenca String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+model Consultation {
+  id           String             @id @default(uuid()) @db.Uuid
+  tenantId     String
+  patientId    String             @db.Uuid
+  doctorId     String             @db.Uuid
+  queixa       String?
+  conduta      String?
+  cid          String?
+  status       ConsultationStatus @default(em_atendimento)
+  iniciadaEm   DateTime           @default(now())
+  finalizadaEm DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient       Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor        Doctor         @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  prescriptions Prescription[]
+  examRequests  ExamRequest[]
+  certificates  Certificate[]
+  referrals     Referral[]
+  queueTickets  QueueTicket[]
 
   @@index([tenantId])
   @@index([doctorId])
-  @@map("medical_records")
+  @@index([patientId])
+  @@index([tenantId, doctorId, status])
+  @@map("consultations")
 }
 
-model MedicationReferral {
-  id               String   @id @default(uuid()) @db.Uuid
-  tenantId         String
-  paciente         String
-  doctorId         String   @db.Uuid
-  medicamento      String?
-  nivel_prioridade String?
-  setor_destino    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Prescription {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String
+  patientId      String    @db.Uuid
+  consultationId String?   @db.Uuid
+  medicamento    String
+  dose           String?
+  posologia      String?
+  duracao        String?
+  usoContinuo    Boolean   @default(false)
+  iniciadaEm     DateTime  @default(now())
+  encerradaEm    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
-  @@index([doctorId])
-  @@map("medication_referrals")
+  @@index([patientId])
+  @@index([consultationId])
+  @@map("prescriptions")
 }
 
-model ProcedureReferral {
-  id               String   @id @default(uuid()) @db.Uuid
-  tenantId         String
-  paciente         String
-  doctorId         String   @db.Uuid
-  procedimento     String?
-  nivel_prioridade String?
-  setor_destino    String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model ExamRequest {
+  id             String     @id @default(uuid()) @db.Uuid
+  tenantId       String
+  patientId      String     @db.Uuid
+  consultationId String?    @db.Uuid
+  tipo           String
+  justificativa  String?
+  status         ExamStatus @default(solicitado)
+  resultado      String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
-  @@index([doctorId])
-  @@map("procedure_referrals")
+  @@index([patientId])
+  @@index([consultationId])
+  @@map("exam_requests")
+}
+
+model Certificate {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String
+  patientId      String   @db.Uuid
+  consultationId String?  @db.Uuid
+  doctorId       String   @db.Uuid
+  dias           Int
+  cid            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  doctor       Doctor        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@map("certificates")
+}
+
+model Referral {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String
+  patientId      String   @db.Uuid
+  consultationId String?  @db.Uuid
+  doctorId       String   @db.Uuid
+  destino        String
+  motivo         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
+  doctor       Doctor        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([patientId])
+  @@map("referrals")
 }
 
 model QueueTicket {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String
-  paciente   String
-  setor      String?
-  prioridade String?
-  status     String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String
+  patientId      String      @db.Uuid
+  doctorId       String?     @db.Uuid
+  consultationId String?     @db.Uuid
+  setor          String?
+  status         QueueStatus @default(aguardando)
+  position       Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  doctor       Doctor?       @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  consultation Consultation? @relation(fields: [consultationId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
+  @@index([patientId])
+  @@index([tenantId, status, position])
   @@map("queue_tickets")
 }

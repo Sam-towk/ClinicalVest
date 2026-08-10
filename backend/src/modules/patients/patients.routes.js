@@ -4,15 +4,13 @@ const requireRole = require('../../middlewares/requireRole');
 
 const router = Router();
 
-// Leitura
+router.get('/search', controller.search);
 router.get('/', controller.list);
+router.get('/:id/summary', controller.summary);
 router.get('/:id', controller.getOne);
 
-// Escrita
 router.post('/', requireRole('admin', 'assistente'), controller.create);
-router.put('/:id', requireRole('admin', 'assistente'), controller.update);
-
-// Exclusao (admin)
+router.put('/:id', requireRole('admin', 'assistente', 'medico'), controller.update);
 router.delete('/:id', requireRole('admin'), controller.remove);
 
 module.exports = router;

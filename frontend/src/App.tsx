@@ -6,6 +6,11 @@ import { RequireAuth } from '@/components/auth/RequireAuth';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import ModulePage from '@/pages/ModulePage';
+import AtendimentoPage from '@/pages/AtendimentoPage';
+import PatientProfilePage from '@/pages/PatientProfilePage';
+import MeuHistoricoPage from '@/pages/MeuHistoricoPage';
+import QueueDayPage from '@/pages/QueueDayPage';
+import SchedulingWeekPage from '@/pages/SchedulingWeekPage';
 import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
@@ -26,6 +31,11 @@ export default function App() {
           <Route element={<RequireAuth />}>
             <Route element={<AppLayout />}>
               <Route index element={<Dashboard />} />
+              <Route path="atendimento" element={<AtendimentoPage />} />
+              <Route path="meu-historico" element={<MeuHistoricoPage />} />
+              <Route path="patients/:id" element={<PatientProfilePage />} />
+              <Route path="queue" element={<QueueDayPage />} />
+              <Route path="scheduling" element={<SchedulingWeekPage />} />
               <Route path=":moduleSlug" element={<ModulePage />} />
               <Route path="*" element={<NotFound />} />
             </Route>

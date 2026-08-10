@@ -2,16 +2,7 @@ const { prisma } = require('../../config/prisma');
 const isValidUuid = require('../../utils/isValidUuid');
 const pickFields = require('../../utils/pickFields');
 
-const WRITABLE = ['nome', 'email', 'telefone', 'especialidade', 'plantao'];
-const PLANTAO_VALORES = ['Sim', 'Não'];
-
-function assertPlantaoValido(plantao) {
-  if (plantao !== undefined && !PLANTAO_VALORES.includes(plantao)) {
-    const err = new Error(`plantao deve ser um de: ${PLANTAO_VALORES.join(', ')}.`);
-    err.status = 400;
-    throw err;
-  }
-}
+const WRITABLE = ['nome', 'email', 'telefone', 'especialidade'];
 
 async function findAll(tenantId) {
   return prisma.doctor.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
@@ -24,14 +15,12 @@ async function findById(tenantId, id) {
 
 async function create(tenantId, data) {
   const safeData = pickFields(data, WRITABLE);
-  assertPlantaoValido(safeData.plantao);
   return prisma.doctor.create({ data: { ...safeData, tenantId } });
 }
 
 async function update(tenantId, id, data) {
   if (!isValidUuid(id)) return null;
   const safeData = pickFields(data, WRITABLE);
-  assertPlantaoValido(safeData.plantao);
   const existing = await prisma.doctor.findFirst({ where: { id, tenantId } });
   if (!existing) return null;
   return prisma.doctor.update({ where: { id }, data: safeData });

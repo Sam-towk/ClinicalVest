@@ -4,7 +4,7 @@ import { Skeleton } from './ui/Skeleton';
 interface StatCardProps {
   icon: LucideIcon;
   label: string;
-  value: number | undefined;
+  value: number | string | undefined;
   isLoading: boolean;
 }
 
