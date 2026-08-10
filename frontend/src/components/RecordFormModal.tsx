@@ -60,10 +60,24 @@ export function RecordFormModal({ open, onOpenChange, module, defaultValues, onS
   });
 
   useEffect(() => {
-    if (open) {
-      reset(defaultValues ?? createDefaults);
+    if (!open) return;
+    const values = { ...(defaultValues ?? createDefaults) };
+    for (const field of visibleFields) {
+      const raw = values[field.key];
+      if (!raw) continue;
+      if (field.type === 'date') {
+        // API manda ISO; <input type="date"> espera YYYY-MM-DD
+        values[field.key] = raw.slice(0, 10);
+      } else if (field.type === 'datetime-local') {
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, '0');
+          values[field.key] = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+      }
     }
-  }, [open, defaultValues, createDefaults, reset]);
+    reset(values);
+  }, [open, defaultValues, createDefaults, reset, visibleFields]);
 
   return (
     <Modal

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Pencil, Trash2, Inbox, SearchX } from 'lucide-react';
@@ -81,6 +82,10 @@ export function RecordsTable({ module, records, isLoading, hasFilters, canEdit, 
                 <td key={field.key} className="max-w-[280px] truncate px-4 py-3 align-middle text-text">
                   {field.key === module.badgeField ? (
                     <Badge value={record[field.key]} />
+                  ) : module.slug === 'patients' && field.key === 'nome' ? (
+                    <Link to={`/patients/${record.id}`} className="font-medium text-primary hover:underline">
+                      {record[field.key] || '—'}
+                    </Link>
                   ) : (
                     record[field.key] || <span className="text-text-faint">—</span>
                   )}

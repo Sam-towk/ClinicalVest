@@ -6,6 +6,7 @@ const router = Router();
 
 // Leitura
 router.get('/', controller.list);
+router.get('/range', controller.range);
 router.get('/:id', controller.getOne);
 
 // Escrita

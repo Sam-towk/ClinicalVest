@@ -1,13 +1,48 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, HeartPulse, X } from 'lucide-react';
-import { modules } from '@/config/modules';
-import { getUser } from '@/lib/auth';
+import {
+  LayoutDashboard,
+  HeartPulse,
+  X,
+  Stethoscope,
+  History,
+  Users,
+  CalendarClock,
+  Ticket,
+  UserCog,
+} from 'lucide-react';
+import { getUser, type Role } from '@/lib/auth';
 import { IconButton } from '../ui/IconButton';
+import type { LucideIcon } from 'lucide-react';
 
-const NAV_GROUPS: { label: string; slugs: string[] }[] = [
-  { label: 'Atendimento', slugs: ['patients', 'medical-records', 'scheduling', 'queue'] },
-  { label: 'Encaminhamentos', slugs: ['medication-referral', 'procedure-referral'] },
-  { label: 'Administracao', slugs: ['doctors', 'users'] },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  roles: Role[];
+}
+
+const CUSTOM_LINKS: NavItem[] = [
+  { to: '/atendimento', label: 'Consulta atual', icon: Stethoscope, roles: ['medico'] },
+  { to: '/patients', label: 'Pacientes', icon: Users, roles: ['medico'] },
+  { to: '/meu-historico', label: 'Meu histórico', icon: History, roles: ['medico'] },
+];
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Atendimento',
+    items: [
+      { to: '/patients', label: 'Pacientes', icon: Users, roles: ['admin', 'assistente'] },
+      { to: '/scheduling', label: 'Agenda', icon: CalendarClock, roles: ['admin', 'assistente'] },
+      { to: '/queue', label: 'Fila digital', icon: Ticket, roles: ['admin', 'assistente'] },
+    ],
+  },
+  {
+    label: 'Administracao',
+    items: [
+      { to: '/doctors', label: 'Médicos', icon: Stethoscope, roles: ['admin'] },
+      { to: '/users', label: 'Contas de usuário', icon: UserCog, roles: ['admin'] },
+    ],
+  },
 ];
 
 const linkClasses = ({ isActive }: { isActive: boolean }) =>
@@ -22,10 +57,6 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const role = getUser()?.role;
-  const visibleModules = (slugs: string[]) =>
-    slugs
-      .map((slug) => modules.find((m) => m.slug === slug))
-      .filter((mod): mod is (typeof modules)[number] => !!mod && !!role && mod.permissions.view.includes(role));
 
   return (
     <>
@@ -62,28 +93,45 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             </NavLink>
           </div>
 
-          {NAV_GROUPS.map((group) => {
-            const groupModules = visibleModules(group.slugs);
-            if (groupModules.length === 0) return null;
-            return (
-              <div key={group.label} className="flex flex-col gap-1">
-                <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">{group.label}</p>
-                {groupModules.map((mod) => {
-                  const Icon = mod.icon;
-                  return (
-                    <NavLink key={mod.slug} to={`/${mod.slug}`} className={linkClasses} onClick={onClose}>
-                      <Icon className="size-5 shrink-0" aria-hidden="true" />
-                      {mod.title}
-                    </NavLink>
-                  );
-                })}
-              </div>
-            );
-          })}
+          {role === 'medico' && (
+            <div className="flex flex-col gap-1">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">Médico</p>
+              {CUSTOM_LINKS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink key={item.to} to={item.to} className={linkClasses} onClick={onClose}>
+                    <Icon className="size-5 shrink-0" aria-hidden="true" />
+                    {item.label}
+                  </NavLink>
+                );
+              })}
+            </div>
+          )}
+
+          {role &&
+            role !== 'medico' &&
+            NAV_GROUPS.map((group) => {
+              const items = group.items.filter((item) => item.roles.includes(role));
+              if (items.length === 0) return null;
+              return (
+                <div key={group.label} className="flex flex-col gap-1">
+                  <p className="px-3 text-xs font-semibold uppercase tracking-wider text-white/50">{group.label}</p>
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink key={item.to} to={item.to} className={linkClasses} onClick={onClose}>
+                        <Icon className="size-5 shrink-0" aria-hidden="true" />
+                        {item.label}
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              );
+            })}
         </nav>
 
         <div className="rounded-[var(--radius)] bg-white/10 px-3 py-3 text-xs leading-relaxed text-white/70">
-          Ambiente multi-clinica. Todos os dados sao isolados por tenant.
+          Clínica pequena · atendimento centrado no paciente.
         </div>
       </aside>
     </>

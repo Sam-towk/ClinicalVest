@@ -4,13 +4,12 @@ const requireRole = require('../../middlewares/requireRole');
 
 const router = Router();
 
-// Leitura
 router.get('/', controller.list);
-router.get('/:id', controller.getOne);
-
-// Escrita
+router.post('/reorder', requireRole('admin', 'assistente'), controller.reorder);
 router.post('/', requireRole('admin', 'assistente'), controller.create);
-router.put('/:id', requireRole('admin', 'assistente', 'medico'), controller.update);
+router.post('/:id/encaminhar', requireRole('admin', 'assistente'), controller.encaminhar);
+router.get('/:id', controller.getOne);
+router.put('/:id', requireRole('admin', 'assistente'), controller.update);
 router.delete('/:id', requireRole('admin', 'assistente'), controller.remove);
 
 module.exports = router;

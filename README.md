@@ -4,7 +4,7 @@
 
 # Clinical Vest
 
-Sistema multi-tenant de gestão clínica — pacientes, prontuários, agendamentos, fila digital e encaminhamentos para clínicas de atendimento humano.
+Sistema multi-tenant para clínicas e consultórios pequenos — atendimento centrado no paciente, fila por ordem de chegada e prontuário no perfil.
 
 </div>
 
@@ -12,21 +12,21 @@ Clinical Vest é um SaaS enxuto para clínicas e consultórios que precisam gere
 
 O sistema é um monorepo pequeno:
 
-- **`backend/`** — API REST em Node.js (Express) + Supabase/Postgres (Prisma)
+- **`backend/`** — API REST em Node.js (Express) + Postgres (Prisma)
 - **`frontend/`** — SPA em React + TypeScript, construída com Vite e Tailwind CSS
+- **`docker-compose.yml`** — Postgres local + API containerizada (caminho recomendado no dia a dia)
 
 > [!NOTE]
 > **Sobre este projeto.** O Clinical Vest é um projeto de estudo, criado para consolidar na prática conceitos de Node.js, TypeScript, arquitetura de APIs REST e persistência com Postgres vistos na faculdade — e para aplicar, no desenho das telas e fluxos (fila digital, agendamentos, encaminhamentos), conceitos de Interação Humano-Computador (IHC) trabalhados na disciplina. Não é um produto em produção nem se destina a uso clínico real.
 
 ## Funcionalidades
 
-- **Pacientes** — cadastro de pacientes humanos (CPF, contato); ao criar, opção de já entrar na fila digital
-- **Prontuários** — alergias, exames solicitados, itens prescritos e classificação da doença (CID)
-- **Agendamentos** — marcação de consultas com acompanhamento de status (agendado, confirmado, em andamento, concluído, cancelado)
-- **Fila digital** — substitui a retirada física de senha, com prioridade e status por paciente
-- **Encaminhamento de medicamentos e procedimentos** — roteia solicitações para um setor de destino por nível de prioridade
-- **Médicos** — cadastro do corpo clínico e suas especialidades
-- **Autenticação** — login/registro via JWT, com tenant e role embutidos no token em vez de confiados a partir do cliente
+- **Consulta (médico)** — tela de atendimento com rascunho automático, anexos (exame, receita, atestado, encaminhamento) e contexto clínico lateral
+- **Pacientes** — cadastro + perfil com abas (resumo, consultas, prescrições, exames, documentos); assistente não vê conteúdo clínico
+- **Agendamentos** — agenda vinculada a paciente; check-in (`na_fila`) entra na fila do dia
+- **Fila digital** — ordem de chegada (sem prioridade por gravidade); recepção encaminha ao médico
+- **Médicos / usuários** — cadastro do corpo clínico e contas (admin)
+- **Autenticação** — login/registro via JWT, com tenant e role embutidos no token
 
 > [!NOTE]
 > Toda collection tem um `tenantId`. Todas as queries do backend filtram por ele, e o valor sempre vem do JWT do usuário autenticado — nunca de um header de requisição ou do frontend.
@@ -44,91 +44,177 @@ backend/
 │   │   ├── <modulo>.controller.js   # tratamento de request/response
 │   │   └── <modulo>.service(s).js   # regra de negocio, fala com o Prisma Client
 │   ├── middlewares/              # auth.middleware.js, errorHandler.js
-│   ├── config/prisma.js          # conexao com o Postgres (Supabase) via Prisma
+│   ├── config/prisma.js          # conexao com o Postgres via Prisma
 │   ├── app.js                    # montagem da app Express
 │   └── server.js                 # ponto de entrada
 ```
 
-No frontend, cada módulo (pacientes, prontuários, agendamentos, fila, encaminhamentos, médicos) é descrito de forma declarativa em [`frontend/src/config/modules.ts`](frontend/src/config/modules.ts) — campos, labels e opções de select — e renderizado por uma única `ModulePage` genérica, então adicionar um módulo raramente exige uma página nova.
+No frontend, os CRUDs de admin/recepção (pacientes, agendamentos, médicos, usuários) são descritos em [`frontend/src/config/modules.ts`](frontend/src/config/modules.ts) e renderizados pela `ModulePage` genérica. Telas de fluxo clínico — atendimento, perfil do paciente e fila do dia — são páginas próprias (`AtendimentoPage`, `PatientProfilePage`, `QueueDayPage`).
 
-## Como rodar
+## Como rodar localmente
+
+Caminho recomendado: **Docker sobe Postgres + backend**; o **frontend** roda com Vite na máquina.
 
 ### Pré-requisitos
 
-- [Node.js](https://nodejs.org/) 20+
-- Um projeto [Supabase](https://supabase.com/) (gratuito) — crie um em supabase.com e pegue as connection strings em *Project Settings → Database → Connection string*
-- [Docker](https://www.docker.com/) (opcional, só para rodar a API containerizada)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (ou Docker Engine + Compose)
+- [Node.js](https://nodejs.org/) 20+ (só para o frontend)
 
-### Configurar o banco (Supabase)
+### 1. Configurar o backend
+
+Na raiz do repositório:
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-Edite `backend/.env` e defina:
-- `DATABASE_URL` e `DIRECT_URL` — connection strings do seu projeto Supabase (veja os comentários em `.env.example`)
-- `JWT_SECRET` — um valor aleatório forte (ex: `openssl rand -hex 32`)
+Edite `backend/.env` e defina pelo menos:
 
-Depois aplique o schema no banco (a migration `init` já vem no repo):
-
-```bash
-npm install
-npm run migrate:deploy
+```env
+JWT_SECRET=troque-por-um-segredo-forte
+CORS_ORIGIN=http://localhost:5173
 ```
 
-### Rodando com Docker
+Gere um segredo com:
 
-Com `backend/.env` preenchido (URLs do **pooler** Supabase + `JWT_SECRET`):
+```bash
+openssl rand -hex 32
+```
+
+> Com Docker, o Compose **sobrescreve** `DATABASE_URL` e `DIRECT_URL` para apontar ao Postgres do container (`db`). Você pode deixar as URLs do `.env.example` como estão — elas não são usadas nesse modo.
+
+### 2. Subir Postgres + API com Docker
+
+Na **raiz** do repositório (`ClinicalVest/`):
 
 ```bash
 docker compose up --build
 ```
 
-Sobe só o backend em `http://localhost:3000`. No start o container roda `prisma migrate deploy` e depois a API. O Postgres fica no Supabase (não há serviço de banco no Compose).
+Isso sobe dois serviços:
 
-<details>
-<summary>Outros comandos úteis do Docker</summary>
+| Serviço | Container | Porta | Função |
+| --- | --- | --- | --- |
+| `db` | `clinicalvest-db` | `5432` | Postgres 16 local |
+| `backend` | `clinicalvest-backend` | `3000` | API Express |
+
+No start do container o backend executa, nesta ordem:
+
+1. `prisma migrate deploy` — aplica as migrations
+2. `scripts/seed-admin.js` — cria o usuário de teste (se ainda não existir)
+3. `node src/server.js` — sobe a API
+
+Confira se a API respondeu:
 
 ```bash
-docker compose up --build -d       # subir em segundo plano
-docker compose logs -f backend     # acompanhar os logs do backend
-docker compose down                # parar o container
+curl http://localhost:3000/health
+# {"status":"ok"}
+```
+
+**Login de teste** (criado pelo seed):
+
+| Campo | Valor |
+| --- | --- |
+| E-mail | `admin@admin` |
+| Senha | `admin` |
+
+<details>
+<summary>Comandos úteis do Docker</summary>
+
+```bash
+# subir em segundo plano
+docker compose up --build -d
+
+# acompanhar logs do backend
+docker compose logs -f backend
+
+# ver status dos containers
+docker compose ps
+
+# parar (mantém o volume do Postgres)
+docker compose down
+
+# parar e apagar o banco local
+docker compose down -v
+
+# rebuild sem cache
 docker compose build --no-cache backend
-docker compose exec backend sh     # abrir um shell no container do backend
+
+# shell dentro do container da API
+docker compose exec backend sh
 ```
 
 </details>
 
-### Rodando manualmente
+### 3. Subir o frontend
+
+Em **outro terminal**:
 
 ```bash
-# backend (depois de configurar o banco, ver acima)
-cd backend
-npm run dev                        # http://localhost:3000
-```
-
-```bash
-# frontend, em outro terminal
 cd frontend
-cp .env.example .env               # VITE_API_URL aponta para o backend
+cp .env.example .env
 npm install
-npm run dev                        # http://localhost:5173
+npm run dev
 ```
 
-Com os dois rodando, abra `http://localhost:5173`, registre uma conta de clínica e faça login.
+O `.env` do frontend já aponta para a API local:
+
+```env
+VITE_API_URL=http://localhost:3000/api
+```
+
+Abra [http://localhost:5173](http://localhost:5173) e entre com `admin@admin` / `admin`, ou registre uma nova clínica.
+
+### Checklist rápido
+
+1. Docker Desktop ligado  
+2. `backend/.env` com `JWT_SECRET` preenchido  
+3. `docker compose up --build` na raiz → API em `http://localhost:3000`  
+4. `npm run dev` em `frontend/` → app em `http://localhost:5173`  
+5. Login com o seed ou registro de nova conta  
+
+---
+
+### Alternativa: backend sem Docker (Node local)
+
+Use quando quiser desenvolver a API com `nodemon`, ainda com o Postgres do Compose:
+
+```bash
+# só o banco
+docker compose up -d db
+
+# no backend/.env, aponte para o Postgres publicado na máquina:
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/clinicalvest
+# DIRECT_URL=postgresql://postgres:postgres@localhost:5432/clinicalvest
+
+cd backend
+npm install
+npm run migrate:deploy
+npm run seed:admin   # opcional — admin@admin / admin
+npm run dev          # http://localhost:3000
+```
+
+### Alternativa: Supabase em vez do Postgres do Compose
+
+O Compose, por padrão, força o banco local. Para usar Supabase:
+
+1. Preencha `DATABASE_URL` (pooler, porta `6543`) e `DIRECT_URL` (session pooler, porta `5432`) em `backend/.env` — veja os comentários em `.env.example`
+2. Em `docker-compose.yml`, remova do serviço `backend` o bloco `environment` que redefine `DATABASE_URL` / `DIRECT_URL` (ou comente essas duas linhas)
+3. Opcionalmente remova o serviço `db` se não for mais necessário
+4. Suba de novo: `docker compose up --build`
 
 ## Configuração
 
 | Variável | Onde | Descrição |
 | --- | --- | --- |
 | `PORT` | `backend/.env` | Porta em que a API escuta (padrão `3000`) |
-| `DATABASE_URL` | `backend/.env` | Connection string do Postgres (Supabase) via connection pooler — usada em runtime |
-| `DIRECT_URL` | `backend/.env` | Connection string direta do Postgres (Supabase) — usada só pelo Prisma CLI (`migrate`) |
-| `JWT_SECRET` | `backend/.env` | Segredo usado para assinar os tokens de autenticação — obrigatório, sem valor padrão |
+| `DATABASE_URL` | `backend/.env` | Connection string do Postgres em runtime (no Docker Compose é sobrescrita para o serviço `db`) |
+| `DIRECT_URL` | `backend/.env` | Connection string usada pelo Prisma CLI (`migrate`) |
+| `JWT_SECRET` | `backend/.env` | Segredo para assinar JWTs — obrigatório, sem valor padrão |
 | `JWT_EXPIRES_IN` | `backend/.env` | Tempo de vida do token (padrão `8h`) |
-| `CORS_ORIGIN` | `backend/.env` | Lista de origens autorizadas a chamar a API, separadas por vírgula |
-| `VITE_API_URL` | `frontend/.env` | URL base usada pelo frontend para acessar a API |
+| `CORS_ORIGIN` | `backend/.env` | Origens autorizadas, separadas por vírgula (padrão `http://localhost:5173`) |
+| `VITE_API_URL` | `frontend/.env` | URL base da API usada pelo frontend |
 
 ## Visão geral da API
 
@@ -137,18 +223,19 @@ Todas as rotas ficam sob `/api` e, exceto `/api/auth/*`, exigem o header `Author
 | Rota | Descrição |
 | --- | --- |
 | `POST /api/auth/register`, `POST /api/auth/login` | Cria um tenant/conta e retorna um JWT |
-| `/api/patients` | Cadastro de pacientes |
-| `/api/medical-records` | Prontuários |
+| `/api/patients` | Cadastro; `GET /search`, `GET /:id/summary` |
+| `/api/consultations` | Consulta atual, finish/pause, anexos clínicos |
 | `/api/scheduling` | Agendamentos |
-| `/api/queue` | Senhas da fila digital |
-| `/api/medication-referrals` | Encaminhamentos de medicamentos |
-| `/api/procedure-referrals` | Encaminhamentos de procedimentos |
+| `/api/queue` | Fila do dia; `POST /:id/encaminhar`, `POST /reorder` |
 | `/api/doctors` | Cadastro do corpo clínico |
+| `/api/users` | Contas de usuário |
+| `/api/dashboard` | Resumo admin |
 | `GET /health` | Verificação de disponibilidade |
 
 Login e registro têm um rate limit mais restrito (10 requisições / 15 min) que o resto da API (300 requisições / 15 min), para dificultar ataques de força bruta e enumeração de contas.
 
 ## Stack
 
-**Backend:** Express, Prisma, Supabase (Postgres), JSON Web Tokens, bcryptjs, Helmet, express-rate-limit
-**Frontend:** React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form, Zod, Radix UI
+**Backend:** Express, Prisma, PostgreSQL (Docker local ou Supabase), JSON Web Tokens, bcryptjs, Helmet, express-rate-limit  
+**Frontend:** React, TypeScript, Vite, Tailwind CSS, React Router, TanStack Query, React Hook Form, Zod, Radix UI  
+**Infra local:** Docker Compose (Postgres 16 + API Node 20)
