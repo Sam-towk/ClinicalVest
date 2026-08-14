@@ -226,19 +226,6 @@ export interface AppointmentRecord {
   doctorNome: string;
 }
 
-export interface SchedulingRange {
-  slotMinutes: number;
-  items: AppointmentRecord[];
-}
-
-export const schedulingApi = {
-  range: (from: string, to: string, doctorId?: string) => {
-    const params = new URLSearchParams({ from, to });
-    if (doctorId) params.set('doctorId', doctorId);
-    return request<SchedulingRange>(`/scheduling/range?${params.toString()}`);
-  },
-};
-
 export const queueApi = {
   encaminhar: (id: string, doctorId: string) =>
     request(`/queue/${id}/encaminhar`, { method: 'POST', body: JSON.stringify({ doctorId }) }),

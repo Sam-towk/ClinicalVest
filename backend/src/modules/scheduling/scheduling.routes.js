@@ -7,7 +7,8 @@ const router = Router();
 // Leitura
 router.get('/', controller.list);
 router.get('/range', controller.range);
-router.get('/:id', controller.getOne);
+// UUID only so "/range" never cai em getOne se a ordem das rotas mudar.
+router.get('/:id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', controller.getOne);
 
 // Escrita
 router.post('/', requireRole('admin', 'assistente'), controller.create);

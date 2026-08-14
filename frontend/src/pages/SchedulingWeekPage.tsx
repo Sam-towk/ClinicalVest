@@ -3,8 +3,9 @@ import { Navigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { CalendarClock, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
-import { api, schedulingApi, ApiError, type AppointmentRecord } from '@/lib/api';
+import { api, ApiError, type AppointmentRecord, type ModuleRecord } from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import { recordsQueryKey } from '@/hooks/useModuleRecords';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -69,6 +70,14 @@ function formatRangeLabel(inicio: Date, fim: Date): string {
   })}`;
 }
 
+function asAppointments(records: ModuleRecord[] | undefined): AppointmentRecord[] {
+  return (records ?? []) as unknown as AppointmentRecord[];
+}
+
+function patientName(item: AppointmentRecord): string {
+  return item.paciente || item.patientNome || '—';
+}
+
 export default function SchedulingWeekPage() {
   const role = getUser()?.role;
   const canManage = role === 'admin' || role === 'assistente';
@@ -88,25 +97,36 @@ export default function SchedulingWeekPage() {
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
 
-  const rangeQuery = useQuery({
-    queryKey: ['scheduling-range', weekStart.toISOString(), doctorFilter],
-    queryFn: () => schedulingApi.range(weekStart.toISOString(), weekEnd.toISOString(), doctorFilter || undefined),
+  const appointmentsQuery = useQuery({
+    queryKey: recordsQueryKey('scheduling'),
+    queryFn: () => api.list('scheduling'),
     enabled: canManage,
   });
 
   const doctorsQuery = useQuery({
-    queryKey: ['doctors'],
+    queryKey: recordsQueryKey('doctors'),
     queryFn: () => api.list('doctors'),
     enabled: canManage,
   });
 
   const patientsQuery = useQuery({
-    queryKey: ['patients'],
+    queryKey: recordsQueryKey('patients'),
     queryFn: () => api.list('patients'),
     enabled: canManage && newSlot !== null,
   });
 
-  const slotMinutes = rangeQuery.data?.slotMinutes ?? 30;
+  const slotMinutes = 30;
+
+  const weekItems = useMemo(() => {
+    const start = weekStart.getTime();
+    const end = weekEnd.getTime();
+    return asAppointments(appointmentsQuery.data).filter((item) => {
+      if (doctorFilter && item.doctorId !== doctorFilter) return false;
+      if (!item.data_hora) return false;
+      const t = new Date(item.data_hora).getTime();
+      return t >= start && t < end;
+    });
+  }, [appointmentsQuery.data, doctorFilter, weekStart, weekEnd]);
 
   const slots = useMemo(() => {
     const result: number[] = [];
@@ -117,7 +137,7 @@ export default function SchedulingWeekPage() {
   /** Agendamentos indexados por `diaIndex-minutoDoSlot`. */
   const byCell = useMemo(() => {
     const map = new Map<string, AppointmentRecord[]>();
-    for (const item of rangeQuery.data?.items ?? []) {
+    for (const item of weekItems) {
       if (!item.data_hora) continue;
       const d = new Date(item.data_hora);
       const dayIndex = days.findIndex((day) => sameDay(day, d));
@@ -128,20 +148,20 @@ export default function SchedulingWeekPage() {
       map.set(key, [...(map.get(key) ?? []), item]);
     }
     return map;
-  }, [rangeQuery.data, days, slotMinutes]);
+  }, [weekItems, days, slotMinutes]);
 
   const foraDaFaixa = useMemo(
     () =>
-      (rangeQuery.data?.items ?? []).filter((item) => {
+      weekItems.filter((item) => {
         if (!item.data_hora) return true;
         const h = new Date(item.data_hora).getHours();
         return h < START_HOUR || h >= END_HOUR;
       }),
-    [rangeQuery.data]
+    [weekItems]
   );
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['scheduling-range'] });
+    qc.invalidateQueries({ queryKey: recordsQueryKey('scheduling') });
     qc.invalidateQueries({ queryKey: ['queue'] });
   };
 
@@ -312,7 +332,7 @@ export default function SchedulingWeekPage() {
                         onClick={() => setSelected(item)}
                         className="w-full rounded-[var(--radius)] border border-border bg-surface-alt px-2 py-1.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
                       >
-                        <p className="truncate text-xs font-semibold text-text">{item.paciente || '—'}</p>
+                        <p className="truncate text-xs font-semibold text-text">{patientName(item)}</p>
                         <p className="truncate text-[11px] text-text-muted">{item.doctorNome}</p>
                         {item.status && (
                           <span className="mt-1 inline-block">
@@ -329,7 +349,7 @@ export default function SchedulingWeekPage() {
         </div>
       </div>
 
-      {rangeQuery.isError && (
+      {appointmentsQuery.isError && (
         <p className="text-sm text-danger">Não foi possível carregar a agenda desta semana.</p>
       )}
 
@@ -346,7 +366,7 @@ export default function SchedulingWeekPage() {
                   onClick={() => setSelected(item)}
                   className="flex w-full items-center justify-between gap-3 rounded-[var(--radius)] border border-border px-3 py-2 text-left text-sm hover:bg-surface-alt"
                 >
-                  <span className="font-medium text-text">{item.paciente || '—'}</span>
+                  <span className="font-medium text-text">{patientName(item)}</span>
                   <span className="text-text-muted">
                     {item.data_hora ? new Date(item.data_hora).toLocaleString('pt-BR') : 'Sem data'}
                   </span>
@@ -358,7 +378,7 @@ export default function SchedulingWeekPage() {
         </section>
       )}
 
-      {!rangeQuery.isLoading && (rangeQuery.data?.items.length ?? 0) === 0 && (
+      {!appointmentsQuery.isLoading && weekItems.length === 0 && (
         <EmptyState
           icon={CalendarClock}
           title="Nenhum agendamento nesta semana"
@@ -445,7 +465,7 @@ export default function SchedulingWeekPage() {
       <Modal
         open={selected !== null}
         onOpenChange={(open) => !open && setSelected(null)}
-        title={selected?.paciente || 'Agendamento'}
+        title={selected ? patientName(selected) : 'Agendamento'}
         description={
           selected?.data_hora
             ? `${new Date(selected.data_hora).toLocaleString('pt-BR', {
